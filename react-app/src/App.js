@@ -1,18 +1,33 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import PrivateRoute from './components/PrivateRoute';
+import Login from './pages/Login';
+import Callback from './pages/Callback';
+import Dashboard from './pages/Dashboard';
 import './App.css';
 
 function App() {
-  const [hostname, setHostname] = useState('読み込み中...');
-
-  useEffect(() => {
-    setHostname(window.location.hostname);
-  }, []);
-
   return (
-    <div className="container">
-      <h1>Traefik と Docker による環境分離デモ</h1>
-      <p>このページは Traefik を使って <span className="host">{hostname}</span> でホストされています</p>
-    </div>
+    <AuthProvider>
+      <Router>
+        <div className="App">
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/callback" element={<Callback />} />
+            <Route
+              path="/dashboard"
+              element={
+                <PrivateRoute>
+                  <Dashboard />
+                </PrivateRoute>
+              }
+            />
+            <Route path="/" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
 
