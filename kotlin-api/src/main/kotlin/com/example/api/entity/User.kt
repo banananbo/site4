@@ -1,4 +1,4 @@
-package com.example.api.model
+package com.example.api.entity
 
 import javax.persistence.*
 import java.time.LocalDateTime

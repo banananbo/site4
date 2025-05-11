@@ -26,10 +26,53 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ログアウト処理
-  const logout = () => {
-    setToken(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('token');
+  const logout = async () => {
+    try {
+      // ログアウトAPIを呼び出し
+      const userId = getUserId();
+      let url = 'http://api.lvh.me/api/auth/logout';
+      if (userId) {
+        url += `?userId=${userId}`;
+      }
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      
+      // ローカルストレージからトークンを削除
+      setToken(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('token');
+      
+      // Auth0のログアウトURLにリダイレクト
+      window.location.href = data.logoutUrl;
+    } catch (error) {
+      console.error('ログアウトエラー:', error);
+      // エラーが発生しても、ローカルストレージからトークンを削除
+      setToken(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('token');
+    }
+  };
+  
+  // トークンからユーザーIDを取得
+  const getUserId = () => {
+    if (!token) return null;
+    
+    try {
+      // トークンをデコードしてユーザーIDを取得
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.userId;
+    } catch (error) {
+      console.error('トークンデコードエラー:', error);
+      return null;
+    }
   };
 
   // トークンの保存処理
@@ -47,7 +90,8 @@ export const AuthProvider = ({ children }) => {
         loading,
         login,
         logout,
-        saveToken
+        saveToken,
+        getUserId
       }}
     >
       {children}

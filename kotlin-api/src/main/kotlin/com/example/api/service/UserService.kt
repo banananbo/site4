@@ -1,11 +1,12 @@
 package com.example.api.service
 
-import com.example.api.model.User
-import com.example.api.model.UserSession
+import com.example.api.entity.User
+import com.example.api.entity.UserSession
 import com.example.api.repository.UserRepository
 import com.example.api.repository.UserSessionRepository
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
+import java.util.UUID
 
 @Service
 class UserService(
@@ -64,6 +65,16 @@ class UserService(
             
             savedUser
         }
+    }
+    
+    /**
+     * ユーザーの全セッションを削除します
+     * @param userId 削除対象のユーザーID
+     */
+    fun removeUserSessions(userId: Long) {
+        val user = userRepository.findById(userId).orElseThrow { RuntimeException("User not found") }
+        val sessions = userSessionRepository.findByUser(user)
+        userSessionRepository.deleteAll(sessions)
     }
     
     /**

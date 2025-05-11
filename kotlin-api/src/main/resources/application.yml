@@ -32,6 +32,7 @@ auth0:
   audience: ${AUTH0_AUDIENCE}
   issuerUri: ${AUTH0_ISSUER_URI}
   redirectUri: ${AUTH0_REDIRECT_URI}
+  logoutRedirectUri: ${AUTH0_LOGOUT_REDIRECT_URI}
 
 management:
   endpoints:

@@ -1,14 +1,15 @@
-package com.example.api.model
+package com.example.api.entity
 
 import javax.persistence.*
 import java.time.LocalDateTime
+import java.util.UUID
 
 @Entity
 @Table(name = "user_sessions")
 data class UserSession(
     @Id
     @Column(name = "id")
-    val id: String = java.util.UUID.randomUUID().toString(),
+    val id: String = UUID.randomUUID().toString(),
     
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)

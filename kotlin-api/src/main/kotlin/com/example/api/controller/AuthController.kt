@@ -4,11 +4,7 @@ import com.example.api.model.AuthCodeRequest
 import com.example.api.model.LoginUrlResponse
 import com.example.api.service.AuthService
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/auth")
@@ -34,5 +30,20 @@ class AuthController(private val authService: AuthService) {
     fun handleAuthorizationCode(@RequestBody request: AuthCodeRequest): ResponseEntity<Map<String, Any>> {
         val userInfo = authService.handleAuthorizationCode(request.code)
         return ResponseEntity.ok(userInfo)
+    }
+    
+    /**
+     * ログアウト処理を行い、Auth0のログアウトURLを返すエンドポイント
+     * @param userId ログアウトするユーザーID (オプション)
+     * @return Auth0のログアウトURL
+     */
+    @GetMapping("/logout")
+    fun logout(@RequestParam(required = false) userId: Long?): ResponseEntity<Map<String, String>> {
+        val logoutUrl = if (userId != null) {
+            authService.createLogoutUrl(userId)
+        } else {
+            authService.createLogoutUrlWithoutUserId()
+        }
+        return ResponseEntity.ok(mapOf("logoutUrl" to logoutUrl))
     }
 } 
