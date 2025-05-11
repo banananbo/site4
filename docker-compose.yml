@@ -26,19 +26,24 @@ services:
     labels:
       - "traefik.enable=true"
       # 本番環境用設定
-      - "traefik.http.routers.web-prod.rule=Host(`banananbo.com`)"
+      - "traefik.http.routers.web-prod.rule=Host(`${PROD_DOMAIN}`)"
       - "traefik.http.routers.web-prod.entrypoints=web"
       - "traefik.http.routers.web-prod.middlewares=redirect-to-https@docker"
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-      - "traefik.http.routers.web-prod-secure.rule=Host(`banananbo.com`)"
+      - "traefik.http.routers.web-prod-secure.rule=Host(`${PROD_DOMAIN}`)"
       - "traefik.http.routers.web-prod-secure.entrypoints=websecure"
       - "traefik.http.routers.web-prod-secure.tls=true"
       - "traefik.http.routers.web-prod-secure.tls.certresolver=letsencrypt"
       # 開発環境用設定
-      - "traefik.http.routers.web-dev.rule=Host(`lvh.me`)"
+      - "traefik.http.routers.web-dev.rule=Host(`${DEV_DOMAIN}`)"
       - "traefik.http.routers.web-dev.entrypoints=web"
       # 共通設定
       - "traefik.http.services.web.loadbalancer.server.port=80"
+    environment:
+      - APP_ENV=${APP_ENV}
+      - APP_SCHEME=${APP_SCHEME}
+      - APP_DOMAIN=${APP_DOMAIN}
+      - APP_URL=${APP_URL}
     restart: unless-stopped
     
   api:
@@ -46,20 +51,24 @@ services:
     labels:
       - "traefik.enable=true"
       # 本番環境用設定
-      - "traefik.http.routers.api-prod.rule=Host(`api.banananbo.com`)"
+      - "traefik.http.routers.api-prod.rule=Host(`${PROD_API_DOMAIN}`)"
       - "traefik.http.routers.api-prod.entrypoints=web"
       - "traefik.http.routers.api-prod.middlewares=redirect-to-https@docker"
-      - "traefik.http.routers.api-prod-secure.rule=Host(`api.banananbo.com`)"
+      - "traefik.http.routers.api-prod-secure.rule=Host(`${PROD_API_DOMAIN}`)"
       - "traefik.http.routers.api-prod-secure.entrypoints=websecure"
       - "traefik.http.routers.api-prod-secure.tls=true"
       - "traefik.http.routers.api-prod-secure.tls.certresolver=letsencrypt"
       # 開発環境用設定
-      - "traefik.http.routers.api-dev.rule=Host(`api.lvh.me`)"
+      - "traefik.http.routers.api-dev.rule=Host(`${DEV_API_DOMAIN}`)"
       - "traefik.http.routers.api-dev.entrypoints=web"
       # 共通設定
       - "traefik.http.services.api.loadbalancer.server.port=8081"
     restart: unless-stopped
     environment:
+      - APP_ENV=${APP_ENV}
+      - APP_SCHEME=${APP_SCHEME}
+      - APP_DOMAIN=${APP_DOMAIN}
+      - APP_URL=${APP_URL}
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=${MYSQL_USER}
@@ -73,7 +82,8 @@ services:
       - AUTH0_REDIRECT_URI=${AUTH0_REDIRECT_URI}
       - AUTH0_LOGOUT_REDIRECT_URI=${AUTH0_LOGOUT_REDIRECT_URI}
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
 
   mysql:
     image: mysql:8.0
@@ -89,13 +99,19 @@ services:
       - mysql_data:/var/lib/mysql
       - ./mysql/init:/docker-entrypoint-initdb.d
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$MYSQL_USER", "-p$$MYSQL_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
   adminer:
     image: adminer:latest
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.adminer.rule=Host(`adminer.lvh.me`)"
+      - "traefik.http.routers.adminer.rule=Host(`adminer.${DEV_DOMAIN}`)"
       - "traefik.http.routers.adminer.entrypoints=web"
       - "traefik.http.services.adminer.loadbalancer.server.port=8080"
     depends_on:

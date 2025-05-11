@@ -9,9 +9,17 @@ spring:
     username: ${MYSQL_USER:appuser}
     password: ${MYSQL_PASSWORD:apppassword}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-timeout: 60000
+      maximum-pool-size: 5
+      minimum-idle: 1
+      initialization-fail-timeout: 60000
+    tomcat:
+      test-while-idle: true
+      validation-query: SELECT 1
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
@@ -24,6 +32,8 @@ spring:
     clean-disabled: false
     clean-on-validation-error: true
     repair-on-migrate: true
+    connect-retries: 10
+    connect-retries-interval: 5
 
 auth0:
   domain: ${AUTH0_DOMAIN}
