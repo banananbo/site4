@@ -2,8 +2,8 @@ package com.example.api.controller
 
 import com.example.api.model.AuthCodeRequest
 import com.example.api.model.LoginUrlResponse
-import com.example.api.model.TokenResponse
 import com.example.api.service.AuthService
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -25,12 +25,14 @@ class AuthController(private val authService: AuthService) {
     }
     
     /**
-     * Auth0からの認証コードをトークンに交換するエンドポイント
+     * Auth0からの認証コードを処理し、ユーザー情報を返すエンドポイント
+     * アクセストークンはサーバー側でのみ保持し、フロントエンドには返しません
      * @param request 認証コードリクエスト
-     * @return トークンレスポンス
+     * @return ユーザー情報
      */
     @PostMapping("/code")
-    fun exchangeCode(@RequestBody request: AuthCodeRequest): TokenResponse {
-        return authService.exchangeCodeForToken(request.code)
+    fun handleAuthorizationCode(@RequestBody request: AuthCodeRequest): ResponseEntity<Map<String, Any>> {
+        val userInfo = authService.handleAuthorizationCode(request.code)
+        return ResponseEntity.ok(userInfo)
     }
 } 
