@@ -25,7 +25,7 @@ const Callback = () => {
       requestSentRef.current = true;
 
       // Auth0から返された認証コードをAPIに送信
-      axios.post('http://api.lvh.me/api/auth/code', { code, state })
+      axios.post(`${process.env.REACT_APP_API_URL}/api/auth/code`, { code, state })
         .then(response => {
           const { accessToken } = response.data;
           // トークンを保存

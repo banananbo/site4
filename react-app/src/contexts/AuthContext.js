@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
     try {
       // ログアウトAPIを呼び出し
       const userId = getUserId();
-      let url = 'http://api.lvh.me/api/auth/logout';
+      let url = `${process.env.REACT_APP_API_URL}/api/auth/logout`;
       if (userId) {
         url += `?userId=${userId}`;
       }
