@@ -15,6 +15,38 @@
   margin-bottom: 40px;
 }
 
+/* タブのスタイル */
+.tabs-container {
+  margin-bottom: 20px;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #dee2e6;
+  margin-bottom: 20px;
+}
+
+.tab-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight: 500;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #6c757d;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-button:hover {
+  color: #495057;
+}
+
+.tab-button.active {
+  color: #007bff;
+  border-bottom: 2px solid #007bff;
+}
+
 .word-list-section {
   background-color: #ffffff;
   border-radius: 8px;
@@ -114,4 +146,183 @@
 .learning-status-mastered {
   background-color: #d4edda;
   color: #155724;
+}
+
+/* 例文のスタイル */
+.example-sentence {
+  max-width: 300px;
+}
+
+.example-sentence .sentence {
+  font-style: italic;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+.example-sentence .translation {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+/* アクションボタン */
+.action-button {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.add-button {
+  background-color: #28a745;
+  color: white;
+}
+
+.add-button:hover {
+  background-color: #218838;
+}
+
+.remove-button {
+  background-color: #dc3545;
+  color: white;
+}
+
+.remove-button:hover {
+  background-color: #c82333;
+}
+
+/* クリック可能な単語のスタイル */
+.word-cell {
+  cursor: pointer;
+}
+
+.clickable-word {
+  color: #007bff;
+  font-weight: 500;
+  position: relative;
+}
+
+.clickable-word:hover {
+  text-decoration: underline;
+}
+
+/* モーダルスタイル */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  position: relative;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6c757d;
+  z-index: 1;
+}
+
+.modal-close:hover {
+  color: #343a40;
+}
+
+/* 単語詳細カードスタイル */
+.word-detail-card {
+  padding: 24px;
+}
+
+.word-title {
+  font-size: 24px;
+  margin-top: 0;
+  margin-bottom: 24px;
+  color: #343a40;
+  text-align: center;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 12px;
+}
+
+.word-info {
+  margin-bottom: 24px;
+}
+
+.info-row {
+  display: flex;
+  margin-bottom: 12px;
+}
+
+.info-label {
+  font-weight: 500;
+  width: 100px;
+  color: #6c757d;
+}
+
+.info-value {
+  flex: 1;
+}
+
+.examples-section h4 {
+  font-size: 18px;
+  margin-bottom: 16px;
+  color: #343a40;
+}
+
+.examples-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.example-item {
+  padding: 12px;
+  border-radius: 4px;
+  background-color: #f8f9fa;
+  margin-bottom: 12px;
+}
+
+.example-item .sentence {
+  font-style: italic;
+  margin-bottom: 6px;
+  color: #343a40;
+}
+
+.example-item .translation {
+  color: #6c757d;
+}
+
+.no-examples {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.actions {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.actions .action-button {
+  padding: 8px 16px;
+  font-size: 14px;
 } 

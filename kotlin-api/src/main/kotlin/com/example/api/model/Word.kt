@@ -11,6 +11,12 @@ enum class LearningStatus {
     NEW, LEARNING, MASTERED
 }
 
+data class Sentence(
+    val id: String = UUID.randomUUID().toString(),
+    val sentence: String,
+    val translation: String
+)
+
 data class Word(
     val id: String = UUID.randomUUID().toString(),
     val word: String,
@@ -18,6 +24,7 @@ data class Word(
     val partOfSpeech: String = "",
     val status: WordStatus = WordStatus.PENDING,
     val learningStatus: LearningStatus = LearningStatus.NEW,
+    val sentences: List<Sentence>? = null,
     val createdBy: Long? = null,
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val updatedAt: LocalDateTime = LocalDateTime.now()

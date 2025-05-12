@@ -13,9 +13,16 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.security.core.context.SecurityContextHolder
 import java.security.Principal
+import java.util.NoSuchElementException
 
 data class RegisterWordRequest(
     val word: String
+)
+
+data class SentenceResponse(
+    val id: String,
+    val sentence: String,
+    val translation: String
 )
 
 data class WordResponse(
@@ -25,6 +32,7 @@ data class WordResponse(
     val partOfSpeech: String,
     val status: String,
     val learningStatus: String? = null,
+    val sentences: List<SentenceResponse> = emptyList(),
     val createdAt: String? = null,
     val updatedAt: String? = null
 ) {
@@ -37,12 +45,28 @@ data class WordResponse(
                 partOfSpeech = word.partOfSpeech,
                 status = word.status.name,
                 learningStatus = word.learningStatus?.name,
+                sentences = word.sentences?.map { 
+                    SentenceResponse(
+                        id = it.id,
+                        sentence = it.sentence,
+                        translation = it.translation
+                    )
+                } ?: emptyList(),
                 createdAt = word.createdAt.toString(),
                 updatedAt = word.updatedAt.toString()
             )
         }
     }
 }
+
+data class WordRelationRequest(
+    val wordId: String
+)
+
+data class WordRelationResponse(
+    val success: Boolean,
+    val message: String
+)
 
 @RestController
 @RequestMapping("/api/words")
@@ -58,7 +82,8 @@ class WordController(
     fun getWords(principal: Principal?): ResponseEntity<List<WordResponse>> {
         // ユーザーIDを取得
         val auth0Id = principal?.name
-        val userId = auth0Id?.let { userService.findUserByAuth0Id(it).orElse(null)?.id }
+        val user = auth0Id?.let { userService.findUserByAuth0Id(it).orElse(null) }
+        val userId = user?.id
         
         // ページングと並び替えの設定
         val pageable = PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "createdAt"))
@@ -97,5 +122,90 @@ class WordController(
     fun getWord(@PathVariable id: String): ResponseEntity<WordResponse> {
         val word = wordService.getWord(id) ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(WordResponse.fromWord(word))
+    }
+
+    /**
+     * 全単語一覧を取得する
+     */
+    @GetMapping("/all")
+    fun getAllWords(): ResponseEntity<List<WordResponse>> {
+        // ページングと並び替えの設定
+        val pageable = PageRequest.of(0, 1000, Sort.by(Sort.Direction.DESC, "createdAt"))
+        
+        // 全単語リストを取得
+        val words = wordService.getAllWords(pageable)
+        
+        return ResponseEntity.ok(words.map { WordResponse.fromWord(it) })
+    }
+
+    /**
+     * ユーザーに単語を関連付ける
+     */
+    @PostMapping("/user/add")
+    fun addWordToUser(
+        @RequestBody request: WordRelationRequest,
+        principal: Principal?
+    ): ResponseEntity<WordRelationResponse> {
+        // ユーザーIDを取得
+        val auth0Id = principal?.name
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(WordRelationResponse(false, "認証が必要です"))
+        
+        val user = userService.findUserByAuth0Id(auth0Id).orElse(null)
+            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(WordRelationResponse(false, "ユーザーが見つかりません"))
+        
+        val userId = user.id
+            ?: return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(WordRelationResponse(false, "ユーザーIDが無効です"))
+        
+        try {
+            val result = wordService.addWordToUser(userId, request.wordId)
+            return if (result) {
+                ResponseEntity.ok(WordRelationResponse(true, "単語が追加されました"))
+            } else {
+                ResponseEntity.ok(WordRelationResponse(false, "既に追加されている単語です"))
+            }
+        } catch (e: NoSuchElementException) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(WordRelationResponse(false, e.message ?: "単語が見つかりません"))
+        } catch (e: Exception) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(WordRelationResponse(false, "エラーが発生しました: ${e.message}"))
+        }
+    }
+    
+    /**
+     * ユーザーから単語の関連付けを削除する
+     */
+    @PostMapping("/user/remove")
+    fun removeWordFromUser(
+        @RequestBody request: WordRelationRequest,
+        principal: Principal?
+    ): ResponseEntity<WordRelationResponse> {
+        // ユーザーIDを取得
+        val auth0Id = principal?.name
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(WordRelationResponse(false, "認証が必要です"))
+        
+        val user = userService.findUserByAuth0Id(auth0Id).orElse(null)
+            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(WordRelationResponse(false, "ユーザーが見つかりません"))
+        
+        val userId = user.id
+            ?: return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(WordRelationResponse(false, "ユーザーIDが無効です"))
+        
+        try {
+            val result = wordService.removeWordFromUser(userId, request.wordId)
+            return if (result) {
+                ResponseEntity.ok(WordRelationResponse(true, "単語が削除されました"))
+            } else {
+                ResponseEntity.ok(WordRelationResponse(false, "関連付けられていない単語です"))
+            }
+        } catch (e: Exception) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(WordRelationResponse(false, "エラーが発生しました: ${e.message}"))
+        }
     }
 }
