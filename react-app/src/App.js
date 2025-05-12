@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Callback from './pages/Callback';
 import Dashboard from './pages/Dashboard';
+import WordManagement from './pages/WordManagement';
 import './App.css';
 
 function App() {
@@ -21,6 +22,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <Dashboard />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/words"
+              element={
+                <PrivateRoute>
+                  <WordManagement />
                 </PrivateRoute>
               }
             />
