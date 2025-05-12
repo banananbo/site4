@@ -36,7 +36,9 @@ class SecurityConfig {
             .authorizeRequests()
             // CORSプリフライトリクエスト用に OPTIONS を許可
             .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-            .antMatchers("/api/auth/**").permitAll()
+            .antMatchers("/api/auth/login").permitAll()
+            .antMatchers("/api/auth/code").permitAll()
+            .antMatchers("/api/auth/logout").authenticated()
             .antMatchers("/api/public/**").permitAll()
             .antMatchers("/actuator/**").permitAll()
             .antMatchers("/api/**").authenticated()
@@ -71,11 +73,21 @@ class SecurityConfig {
         configuration.allowedOrigins = listOf(
             "http://lvh.me",
             "http://www.lvh.me",
+            "http://api.lvh.me",
             "https://banananbo.com"
         )
-        configuration.allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
+        configuration.allowedMethods = listOf("*")
         configuration.allowedHeaders = listOf("*")
+        configuration.exposedHeaders = listOf(
+            "Access-Control-Allow-Origin",
+            "Access-Control-Allow-Credentials",
+            "Content-Type",
+            "Authorization",
+            "X-Requested-With",
+            "Accept"
+        )
         configuration.allowCredentials = true
+        configuration.maxAge = 3600L
 
         val source = UrlBasedCorsConfigurationSource()
         source.registerCorsConfiguration("/**", configuration)

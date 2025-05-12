@@ -47,21 +47,16 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       // ログアウトAPIを呼び出し
-      const userId = getUserId();
+      const currentToken = token;
       let url = `${process.env.REACT_APP_API_URL}/api/auth/logout`;
-      if (userId) {
-        url += `?userId=${userId}`;
-      }
       
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${currentToken}`
         }
       });
-      
-      const data = await response.json();
       
       // ローカルストレージからトークンを削除
       setToken(null);
@@ -69,15 +64,23 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       localStorage.removeItem('token');
       
-      // Auth0のログアウトURLにリダイレクト
-      window.location.href = data.logoutUrl;
+      if (response.ok) {
+        const data = await response.json();
+        // Auth0のログアウトURLにリダイレクト
+        if (data && data.logoutUrl) {
+          window.location.href = data.logoutUrl;
+        } else {
+          // ログアウトURLがない場合はホームにリダイレクト
+          window.location.href = "/";
+        }
+      } else {
+        // エラー時はホームにリダイレクト
+        window.location.href = "/";
+      }
     } catch (error) {
       console.error('ログアウトエラー:', error);
-      // エラーが発生しても、ローカルストレージからトークンを削除
-      setToken(null);
-      setIsAuthenticated(false);
-      setUser(null);
-      localStorage.removeItem('token');
+      // エラーが発生した場合もホームにリダイレクト
+      window.location.href = "/";
     }
   };
   
