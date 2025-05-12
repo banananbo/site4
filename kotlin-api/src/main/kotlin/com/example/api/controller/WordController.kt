@@ -2,6 +2,7 @@ package com.example.api.controller
 
 import com.example.api.model.Word
 import com.example.api.service.WordService
+import com.example.api.service.UserService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -46,7 +47,8 @@ data class WordResponse(
 @RestController
 @RequestMapping("/api/words")
 class WordController(
-    private val wordService: WordService
+    private val wordService: WordService,
+    private val userService: UserService
 ) {
 
     /**
@@ -55,7 +57,8 @@ class WordController(
     @GetMapping
     fun getWords(principal: Principal?): ResponseEntity<List<WordResponse>> {
         // ユーザーIDを取得
-        val userId = principal?.name
+        val auth0Id = principal?.name
+        val userId = auth0Id?.let { userService.findUserByAuth0Id(it).orElse(null)?.id }
         
         // ページングと並び替えの設定
         val pageable = PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "createdAt"))
@@ -80,7 +83,8 @@ class WordController(
         principal: Principal?
     ): ResponseEntity<WordResponse> {
         // ユーザーIDを取得
-        val userId = principal?.name
+        val auth0Id = principal?.name
+        val userId = auth0Id?.let { userService.findUserByAuth0Id(it).orElse(null)?.id }
         
         val registeredWord = wordService.registerWord(request.word, userId)
         return ResponseEntity.status(HttpStatus.CREATED).body(WordResponse.fromWord(registeredWord))

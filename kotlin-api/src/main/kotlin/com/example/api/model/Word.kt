@@ -18,7 +18,7 @@ data class Word(
     val partOfSpeech: String = "",
     val status: WordStatus = WordStatus.PENDING,
     val learningStatus: LearningStatus = LearningStatus.NEW,
-    val createdBy: String? = null,
+    val createdBy: Long? = null,
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val updatedAt: LocalDateTime = LocalDateTime.now()
 )

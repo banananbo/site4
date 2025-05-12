@@ -20,7 +20,7 @@ class WordService(
      * 既に存在する場合は既存の単語を返す
      */
     @Transactional
-    fun registerWord(wordText: String, userId: String?): Word {
+    fun registerWord(wordText: String, userId: Long?): Word {
         // 既に単語が存在するか確認
         val normalizedWord = wordText.trim().lowercase()
         val existingWord = wordRepository.findByWord(normalizedWord)
@@ -57,7 +57,7 @@ class WordService(
     /**
      * ユーザーIDに基づいて単語リストを取得する
      */
-    fun getWordsByUserId(userId: String, pageable: Pageable): List<Word> {
+    fun getWordsByUserId(userId: Long, pageable: Pageable): List<Word> {
         return wordRepository.findByCreatedBy(userId, pageable)
             .content
             .map { it.toDomain() }

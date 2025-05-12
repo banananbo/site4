@@ -38,7 +38,7 @@ data class WordEntity(
     var learningStatus: LearningStatusEntity = LearningStatusEntity.new,
     
     @Column(name = "created_by")
-    val createdBy: String?,
+    val createdBy: Long?,
     
     @Column(name = "created_at", nullable = false)
     val createdAt: LocalDateTime,
