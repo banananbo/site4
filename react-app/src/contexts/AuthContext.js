@@ -22,7 +22,12 @@ export const AuthProvider = ({ children }) => {
   // ログイン処理
   const login = () => {
     // Auth0ログイン画面へ直接リダイレクト
-    window.location.href = 'http://api.lvh.me/api/login';
+    fetch(`${process.env.REACT_APP_API_URL}/api/auth/login`)
+      .then(response => response.json())
+      .then(data => {
+        window.location.href = data.authorizationUrl;
+      });
+
   };
 
   // ログアウト処理
