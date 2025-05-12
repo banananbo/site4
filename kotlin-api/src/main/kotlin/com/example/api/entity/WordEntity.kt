@@ -2,11 +2,16 @@ package com.example.api.entity
 
 import com.example.api.model.Word
 import com.example.api.model.WordStatus
+import com.example.api.model.LearningStatus
 import java.time.LocalDateTime
 import javax.persistence.*
 
 enum class WordStatusEntity {
     pending, processing, completed, error
+}
+
+enum class LearningStatusEntity {
+    new, learning, mastered
 }
 
 @Entity
@@ -28,8 +33,12 @@ data class WordEntity(
     @Column(nullable = false)
     var status: WordStatusEntity,
     
+    @Enumerated(EnumType.STRING)
+    @Column(name = "learning_status", nullable = false)
+    var learningStatus: LearningStatusEntity = LearningStatusEntity.new,
+    
     @Column(name = "created_by")
-    val createdBy: Long?,
+    val createdBy: String?,
     
     @Column(name = "created_at", nullable = false)
     val createdAt: LocalDateTime,
@@ -49,6 +58,11 @@ data class WordEntity(
                 WordStatusEntity.completed -> WordStatus.COMPLETED
                 WordStatusEntity.error -> WordStatus.ERROR
             },
+            learningStatus = when(learningStatus) {
+                LearningStatusEntity.new -> LearningStatus.NEW
+                LearningStatusEntity.learning -> LearningStatus.LEARNING
+                LearningStatusEntity.mastered -> LearningStatus.MASTERED
+            },
             createdBy = createdBy,
             createdAt = createdAt,
             updatedAt = updatedAt
@@ -64,12 +78,19 @@ data class WordEntity(
                 WordStatus.ERROR -> WordStatusEntity.error
             }
             
+            val entityLearningStatus = when(domain.learningStatus) {
+                LearningStatus.NEW -> LearningStatusEntity.new
+                LearningStatus.LEARNING -> LearningStatusEntity.learning
+                LearningStatus.MASTERED -> LearningStatusEntity.mastered
+            }
+            
             return WordEntity(
                 id = domain.id,
                 word = domain.word,
                 meaning = domain.meaning,
                 partOfSpeech = domain.partOfSpeech,
                 status = entityStatus,
+                learningStatus = entityLearningStatus,
                 createdBy = domain.createdBy,
                 createdAt = domain.createdAt,
                 updatedAt = domain.updatedAt

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
+import { AuthContext } from '../contexts/AuthContext';
 import WordForm from '../components/WordForm';
 import './WordManagement.css';
 
@@ -7,16 +8,23 @@ const WordManagement = () => {
   const [words, setWords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { user, getAccessToken } = useContext(AuthContext);
 
-  useEffect(() => {
-    fetchWords();
-  }, []);
-
-  const fetchWords = async () => {
+  const fetchUserWords = async () => {
     try {
       setLoading(true);
+      const token = await getAccessToken();
+      
+      // APIエンドポイントのURL
       const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/words`;
-      const response = await axios.get(apiUrl);
+      
+      // 認証トークンをヘッダーに設定
+      const headers = {
+        Authorization: `Bearer ${token}`
+      };
+      
+      console.log('ユーザー単語リスト取得リクエスト:', { userId: user?.id });
+      const response = await axios.get(apiUrl, { headers });
       console.log('API response:', response.data);
       
       // レスポンスデータの形式をチェック
@@ -40,16 +48,22 @@ const WordManagement = () => {
     }
   };
 
+  useEffect(() => {
+    if (user) {
+      fetchUserWords();
+    }
+  }, [user, getAccessToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="word-management-container">
       <h1>英単語管理</h1>
       
       <div className="word-form-section">
-        <WordForm onWordAdded={fetchWords} />
+        <WordForm onWordAdded={fetchUserWords} />
       </div>
       
       <div className="word-list-section">
-        <h2>登録済み単語リスト</h2>
+        <h2>{user?.name || 'あなた'}の登録単語リスト</h2>
         
         {loading ? (
           <div className="loading">読み込み中...</div>
@@ -66,6 +80,7 @@ const WordManagement = () => {
                   <th>意味</th>
                   <th>品詞</th>
                   <th>ステータス</th>
+                  <th>学習状況</th>
                 </tr>
               </thead>
               <tbody>
@@ -85,6 +100,17 @@ const WordManagement = () => {
                            word.status !== 'PROCESSING' && 
                            word.status !== 'COMPLETED' && 
                            word.status !== 'ERROR')) && '処理待ち'}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`learning-status learning-status-${word.learningStatus?.toLowerCase() || 'new'}`}>
+                        {word.learningStatus === 'NEW' && '未学習'}
+                        {word.learningStatus === 'LEARNING' && '学習中'}
+                        {word.learningStatus === 'MASTERED' && '習得済み'}
+                        {(!word.learningStatus || 
+                          (word.learningStatus !== 'NEW' && 
+                           word.learningStatus !== 'LEARNING' && 
+                           word.learningStatus !== 'MASTERED')) && '未学習'}
                       </span>
                     </td>
                   </tr>

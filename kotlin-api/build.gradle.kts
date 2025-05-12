@@ -36,8 +36,14 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-mysql")
     
-    // spring security
+    // Spring Security
+    implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.security:spring-security-core")
+    
+    // OAuth2 & JWT
+    implementation("org.springframework.security:spring-security-oauth2-jose")
+    implementation("org.springframework.security:spring-security-oauth2-resource-server")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }

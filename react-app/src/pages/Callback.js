@@ -27,9 +27,12 @@ const Callback = () => {
       // Auth0から返された認証コードをAPIに送信
       axios.post(`${process.env.REACT_APP_API_URL}/api/auth/code`, { code, state })
         .then(response => {
-          const { accessToken } = response.data;
+          const { idToken } = response.data;
+
+          console.log('idToken:', idToken);
+          console.log('response.data:', response.data);
           // トークンを保存
-          saveToken(accessToken);
+          saveToken(idToken);
           // ダッシュボードにリダイレクト
           navigate('/dashboard');
         })

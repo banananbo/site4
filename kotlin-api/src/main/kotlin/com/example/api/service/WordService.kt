@@ -7,6 +7,7 @@ import com.example.api.model.WordStatus
 import com.example.api.repository.WordRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.data.domain.Pageable
 import java.time.LocalDateTime
 import java.util.*
 
@@ -19,7 +20,7 @@ class WordService(
      * 既に存在する場合は既存の単語を返す
      */
     @Transactional
-    fun registerWord(wordText: String, userId: Long?): Word {
+    fun registerWord(wordText: String, userId: String?): Word {
         // 既に単語が存在するか確認
         val normalizedWord = wordText.trim().lowercase()
         val existingWord = wordRepository.findByWord(normalizedWord)
@@ -51,5 +52,14 @@ class WordService(
         return wordRepository.findById(id)
             .map { it.toDomain() }
             .orElse(null)
+    }
+    
+    /**
+     * ユーザーIDに基づいて単語リストを取得する
+     */
+    fun getWordsByUserId(userId: String, pageable: Pageable): List<Word> {
+        return wordRepository.findByCreatedBy(userId, pageable)
+            .content
+            .map { it.toDomain() }
     }
 }

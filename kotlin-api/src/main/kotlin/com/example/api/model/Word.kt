@@ -7,13 +7,18 @@ enum class WordStatus {
     PENDING, PROCESSING, COMPLETED, ERROR
 }
 
+enum class LearningStatus {
+    NEW, LEARNING, MASTERED
+}
+
 data class Word(
     val id: String = UUID.randomUUID().toString(),
     val word: String,
     val meaning: String = "",
     val partOfSpeech: String = "",
     val status: WordStatus = WordStatus.PENDING,
-    val createdBy: Long? = null,
+    val learningStatus: LearningStatus = LearningStatus.NEW,
+    val createdBy: String? = null,
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val updatedAt: LocalDateTime = LocalDateTime.now()
 )

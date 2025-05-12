@@ -56,6 +56,7 @@ class AuthService(
         // Auth0に認証コードを送信してトークンを取得
         val holder: TokenHolder = authAPI.exchangeCode(code, redirectUri).execute()
         val accessToken = holder.accessToken
+        val idToken = holder.idToken
         val expiresIn = holder.expiresIn
         
         // トークンを使ってユーザー情報を取得
@@ -82,7 +83,8 @@ class AuthService(
             "userId" to (user.id?.toString() ?: ""),
             "email" to user.email,
             "name" to user.name,
-            "profilePicture" to (user.profilePicture ?: "")
+            "profilePicture" to (user.profilePicture ?: ""),
+            "idToken" to idToken
         )
     }
     

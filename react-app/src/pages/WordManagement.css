@@ -72,7 +72,7 @@
   background-color: #f8f9fa;
 }
 
-.status {
+.status, .learning-status {
   display: inline-block;
   padding: 4px 8px;
   border-radius: 4px;
@@ -98,4 +98,20 @@
 .status-error {
   background-color: #f8d7da;
   color: #721c24;
+}
+
+/* 学習ステータス用スタイル */
+.learning-status-new {
+  background-color: #e2e3e5;
+  color: #383d41;
+}
+
+.learning-status-learning {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.learning-status-mastered {
+  background-color: #d4edda;
+  color: #155724;
 } 

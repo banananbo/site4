@@ -29,6 +29,8 @@ class AuthController(private val authService: AuthService) {
     @PostMapping("/code")
     fun handleAuthorizationCode(@RequestBody request: AuthCodeRequest): ResponseEntity<Map<String, Any>> {
         val userInfo = authService.handleAuthorizationCode(request.code)
+        println("認証コードの処理結果:")
+        println("userInfo: $userInfo")
         return ResponseEntity.ok(userInfo)
     }
     

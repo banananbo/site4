@@ -5,6 +5,13 @@ import com.example.api.service.WordService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.security.oauth2.jwt.Jwt
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
+import org.springframework.security.core.context.SecurityContextHolder
+import java.security.Principal
 
 data class RegisterWordRequest(
     val word: String
@@ -15,7 +22,10 @@ data class WordResponse(
     val word: String,
     val meaning: String,
     val partOfSpeech: String,
-    val status: String
+    val status: String,
+    val learningStatus: String? = null,
+    val createdAt: String? = null,
+    val updatedAt: String? = null
 ) {
     companion object {
         fun fromWord(word: Word): WordResponse {
@@ -24,7 +34,10 @@ data class WordResponse(
                 word = word.word,
                 meaning = word.meaning,
                 partOfSpeech = word.partOfSpeech,
-                status = word.status.name
+                status = word.status.name,
+                learningStatus = word.learningStatus?.name,
+                createdAt = word.createdAt.toString(),
+                updatedAt = word.updatedAt.toString()
             )
         }
     }
@@ -37,12 +50,38 @@ class WordController(
 ) {
 
     /**
+     * 単語一覧を取得する
+     */
+    @GetMapping
+    fun getWords(principal: Principal?): ResponseEntity<List<WordResponse>> {
+        // ユーザーIDを取得
+        val userId = principal?.name
+        
+        // ページングと並び替えの設定
+        val pageable = PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "createdAt"))
+        
+        // ユーザーの単語一覧を取得
+        val words = if (userId != null) {
+            wordService.getWordsByUserId(userId, pageable)
+        } else {
+            // 認証情報がない場合は空リストを返す
+            emptyList()
+        }
+        
+        return ResponseEntity.ok(words.map { WordResponse.fromWord(it) })
+    }
+
+    /**
      * 単語を登録する
      */
     @PostMapping
-    fun registerWord(@RequestBody request: RegisterWordRequest): ResponseEntity<WordResponse> {
-        // TODO: 認証実装後にユーザーIDを取得するように修正
-        val userId = 1L  // 仮のユーザーID
+    fun registerWord(
+        @RequestBody request: RegisterWordRequest,
+        principal: Principal?
+    ): ResponseEntity<WordResponse> {
+        // ユーザーIDを取得
+        val userId = principal?.name
+        
         val registeredWord = wordService.registerWord(request.word, userId)
         return ResponseEntity.status(HttpStatus.CREATED).body(WordResponse.fromWord(registeredWord))
     }

@@ -1,13 +1,14 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
 // 認証コンテキストの作成
-const AuthContext = createContext();
+export const AuthContext = createContext();
 
 // 認証プロバイダーコンポーネント
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
   // コンポーネントマウント時にローカルストレージからトークンを取得
   useEffect(() => {
@@ -15,6 +16,18 @@ export const AuthProvider = ({ children }) => {
     if (storedToken) {
       setToken(storedToken);
       setIsAuthenticated(true);
+      
+      // トークンからユーザー情報を抽出してセット
+      try {
+        const payload = JSON.parse(atob(storedToken.split('.')[1]));
+        setUser({
+          id: payload.userId || payload.sub,
+          name: payload.name || payload.nickname || 'ユーザー',
+          email: payload.email
+        });
+      } catch (error) {
+        console.error('トークンデコードエラー:', error);
+      }
     }
     setLoading(false);
   }, []);
@@ -53,6 +66,7 @@ export const AuthProvider = ({ children }) => {
       // ローカルストレージからトークンを削除
       setToken(null);
       setIsAuthenticated(false);
+      setUser(null);
       localStorage.removeItem('token');
       
       // Auth0のログアウトURLにリダイレクト
@@ -62,6 +76,7 @@ export const AuthProvider = ({ children }) => {
       // エラーが発生しても、ローカルストレージからトークンを削除
       setToken(null);
       setIsAuthenticated(false);
+      setUser(null);
       localStorage.removeItem('token');
     }
   };
@@ -73,11 +88,17 @@ export const AuthProvider = ({ children }) => {
     try {
       // トークンをデコードしてユーザーIDを取得
       const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.userId;
+      return payload.userId || payload.sub;
     } catch (error) {
       console.error('トークンデコードエラー:', error);
       return null;
     }
+  };
+
+  // アクセストークンを取得
+  const getAccessToken = async () => {
+    // 現在のトークンを返す（必要に応じてリフレッシュロジックを追加できます）
+    return token;
   };
 
   // トークンの保存処理
@@ -85,6 +106,18 @@ export const AuthProvider = ({ children }) => {
     setToken(accessToken);
     setIsAuthenticated(true);
     localStorage.setItem('token', accessToken);
+    
+    // トークンからユーザー情報を抽出してセット
+    try {
+      const payload = JSON.parse(atob(accessToken.split('.')[1]));
+      setUser({
+        id: payload.userId || payload.sub,
+        name: payload.name || payload.nickname || 'ユーザー',
+        email: payload.email
+      });
+    } catch (error) {
+      console.error('トークンデコードエラー:', error);
+    }
   };
 
   return (
@@ -92,11 +125,13 @@ export const AuthProvider = ({ children }) => {
       value={{
         isAuthenticated,
         token,
+        user,
         loading,
         login,
         logout,
         saveToken,
-        getUserId
+        getUserId,
+        getAccessToken
       }}
     >
       {children}
