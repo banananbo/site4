@@ -5,7 +5,7 @@ spring:
   application:
     name: api-service
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:user_db}
+    url: jdbc:mysql://${MYSQL_HOST:mysql}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:user_db}
     username: ${MYSQL_USER:appuser}
     password: ${MYSQL_PASSWORD:apppassword}
     driver-class-name: com.mysql.cj.jdbc.Driver

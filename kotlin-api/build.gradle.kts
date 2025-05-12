@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.flywaydb.gradle.task.FlywayMigrateTask
 
 plugins {
     id("org.springframework.boot") version "2.7.8"
@@ -6,6 +7,7 @@ plugins {
     kotlin("jvm") version "1.7.22"
     kotlin("plugin.spring") version "1.7.22"
     kotlin("plugin.jpa") version "1.7.22"
+    id("org.flywaydb.flyway") version "8.5.13"
 }
 
 group = "com.example"
@@ -46,4 +48,16 @@ tasks.withType<KotlinCompile> {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+flyway {
+    url = "jdbc:mysql://mysql:3306/user_db"
+    user = "appuser"
+    password = "apppassword"
+    locations = arrayOf("filesystem:src/main/resources/db/migration")
+}
+
+// flywayMigrateタスクの設定
+tasks.withType<FlywayMigrateTask> {
+    dependsOn("processResources")
 } 
