@@ -111,8 +111,18 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
+      # 本番環境用設定
+      - "traefik.http.routers.adminer-prod.rule=Host(`adminer.${PROD_DOMAIN}`)"
+      - "traefik.http.routers.adminer-prod.entrypoints=web"
+      - "traefik.http.routers.adminer-prod.middlewares=redirect-to-https@docker"
+      - "traefik.http.routers.adminer-prod-secure.rule=Host(`adminer.${PROD_DOMAIN}`)"
+      - "traefik.http.routers.adminer-prod-secure.entrypoints=websecure"
+      - "traefik.http.routers.adminer-prod-secure.tls=true"
+      - "traefik.http.routers.adminer-prod-secure.tls.certresolver=letsencrypt"
+      # 開発環境用設定
       - "traefik.http.routers.adminer.rule=Host(`adminer.${DEV_DOMAIN}`)"
       - "traefik.http.routers.adminer.entrypoints=web"
+      # 共通設定
       - "traefik.http.services.adminer.loadbalancer.server.port=8080"
     depends_on:
       - mysql
