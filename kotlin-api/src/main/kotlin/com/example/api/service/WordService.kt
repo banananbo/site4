@@ -1,10 +1,15 @@
 package com.example.api.service
 
+import com.example.api.entity.JobStatusEntity
+import com.example.api.entity.JobTypeEntity
+import com.example.api.entity.ProcessingJobEntity
 import com.example.api.entity.WordEntity
 import com.example.api.entity.WordStatusEntity
 import com.example.api.model.Word
 import com.example.api.model.WordStatus
+import com.example.api.repository.JobRepository
 import com.example.api.repository.WordRepository
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.data.domain.Pageable
@@ -13,7 +18,9 @@ import java.util.*
 
 @Service
 class WordService(
-    private val wordRepository: WordRepository
+    private val wordRepository: WordRepository,
+    private val jobRepository: JobRepository,
+    private val objectMapper: ObjectMapper
 ) {
     /**
      * 単語を登録する
@@ -42,6 +49,29 @@ class WordService(
         )
         
         val savedWord = wordRepository.save(newWord)
+        
+        // 単語処理ジョブのペイロードを作成
+        val payload = mapOf(
+            "word_id" to savedWord.id,
+            "word" to savedWord.word,
+            "created_by" to savedWord.createdBy
+        )
+        
+        // 単語処理ジョブを作成
+        val processingJob = ProcessingJobEntity(
+            id = UUID.randomUUID().toString(),
+            jobType = JobTypeEntity.word_processing,
+            payload = objectMapper.writeValueAsString(payload),
+            status = JobStatusEntity.pending,
+            retryCount = 0,
+            nextRetryAt = null,
+            createdAt = LocalDateTime.now(),
+            updatedAt = LocalDateTime.now()
+        )
+        
+        // ジョブを保存
+        jobRepository.save(processingJob)
+        
         return savedWord.toDomain()
     }
     

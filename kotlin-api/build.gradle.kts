@@ -45,6 +45,9 @@ dependencies {
     implementation("org.springframework.security:spring-security-oauth2-resource-server")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     
+    // OpenAI API Client
+    implementation("com.theokanning.openai-gpt3-java:service:0.14.0")
+    
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 

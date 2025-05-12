@@ -83,6 +83,8 @@ services:
       - AUTH0_ISSUER_URI=${AUTH0_ISSUER_URI}
       - AUTH0_REDIRECT_URI=${AUTH0_REDIRECT_URI}
       - AUTH0_LOGOUT_REDIRECT_URI=${AUTH0_LOGOUT_REDIRECT_URI}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL}
     depends_on:
       mysql:
         condition: service_healthy

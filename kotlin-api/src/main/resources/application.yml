@@ -44,6 +44,17 @@ auth0:
   redirectUri: ${AUTH0_REDIRECT_URI}
   logoutRedirectUri: ${AUTH0_LOGOUT_REDIRECT_URI}
 
+openai:
+  api:
+    key: ${OPENAI_API_KEY}
+  model: ${OPENAI_MODEL:gpt-3.5-turbo}
+
+app:
+  job:
+    batch-size: 10
+    max-retries: 3
+    interval: 180000
+
 management:
   endpoints:
     web:
