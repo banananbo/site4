@@ -36,6 +36,9 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-mysql")
     
+    // spring security
+    implementation("org.springframework.security:spring-security-core")
+    
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
