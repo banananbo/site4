@@ -13,8 +13,10 @@ const SentenceManagement = () => {
   const [selectedSentence, setSelectedSentence] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [updateStatusLoading, setUpdateStatusLoading] = useState(false);
+  const [updatingId, setUpdatingId] = useState(null); // 更新中のセンテンスIDを管理
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [toast, setToast] = useState({ show: false, message: '', type: '' }); // トースト通知用
   
   const { user, getAccessToken } = useContext(AuthContext);
 
@@ -204,11 +206,23 @@ const SentenceManagement = () => {
     }
   };
   
+  // トースト通知を表示する関数
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    
+    // 3秒後に非表示にする
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: '' });
+    }, 3000);
+  };
+  
   // 学習状態を更新する関数
   const updateLearningStatus = async (sentenceId, status) => {
     if (!user) return;
     
     setUpdateStatusLoading(true);
+    setUpdatingId(sentenceId); // 更新中のIDを設定
+    
     try {
       const token = await getAccessToken();
       
@@ -248,11 +262,16 @@ const SentenceManagement = () => {
         setSelectedSentence({ ...selectedSentence, learningStatus: updatedSentence.learningStatus });
       }
       
+      // 成功メッセージをトーストで表示
+      const statusText = status === 'NEW' ? '未学習' : status === 'LEARNING' ? '学習中' : '習得済み';
+      showToast(`学習状態を「${statusText}」に更新しました`);
+      
     } catch (error) {
       console.error('学習状態の更新エラー:', error);
-      alert(error.message);
+      showToast(error.message, 'error');
     } finally {
       setUpdateStatusLoading(false);
+      setUpdatingId(null); // 更新中IDをクリア
     }
   };
   
@@ -436,10 +455,11 @@ const SentenceManagement = () => {
           <div 
             key={sentence.id} 
             className="sentence-card"
-            onClick={() => handleSentenceClick(sentence)}
           >
-            <div className="sentence-text">{sentence.sentence}</div>
-            <div className="sentence-translation">{sentence.translation || '-'}</div>
+            <div className="sentence-content" onClick={() => handleSentenceClick(sentence)}>
+              <div className="sentence-text">{sentence.sentence}</div>
+              <div className="sentence-translation">{sentence.translation || '-'}</div>
+            </div>
             
             <div className="sentence-footer">
               <div className="sentence-status">
@@ -450,16 +470,34 @@ const SentenceManagement = () => {
               </div>
               
               {isMyPage && (
-                <div className="sentence-learning-status">
-                  <span className={`learning-status learning-status-${sentence.learningStatus?.toLowerCase() || 'new'}`}>
-                    {sentence.learningStatus === 'NEW' && '未学習'}
-                    {sentence.learningStatus === 'LEARNING' && '学習中'}
-                    {sentence.learningStatus === 'MASTERED' && '習得済み'}
-                    {(!sentence.learningStatus || 
-                      (sentence.learningStatus !== 'NEW' && 
-                       sentence.learningStatus !== 'LEARNING' && 
-                       sentence.learningStatus !== 'MASTERED')) && '未学習'}
-                  </span>
+                <div className="sentence-learning-controls">
+                  <div className="sentence-learning-label">学習状況:</div>
+                  <div className="sentence-learning-buttons">
+                    <button 
+                      className={`status-button small ${sentence.learningStatus === 'NEW' ? 'active' : ''} status-new`}
+                      onClick={() => updateLearningStatus(sentence.id, 'NEW')}
+                      disabled={updatingId === sentence.id}
+                      title="未学習"
+                    >
+                      {updatingId === sentence.id && sentence.learningStatus !== 'NEW' ? '...' : '未学習'}
+                    </button>
+                    <button 
+                      className={`status-button small ${sentence.learningStatus === 'LEARNING' ? 'active' : ''} status-learning`}
+                      onClick={() => updateLearningStatus(sentence.id, 'LEARNING')}
+                      disabled={updatingId === sentence.id}
+                      title="学習中"
+                    >
+                      {updatingId === sentence.id && sentence.learningStatus !== 'LEARNING' ? '...' : '学習中'}
+                    </button>
+                    <button 
+                      className={`status-button small ${sentence.learningStatus === 'MASTERED' ? 'active' : ''} status-mastered`}
+                      onClick={() => updateLearningStatus(sentence.id, 'MASTERED')}
+                      disabled={updatingId === sentence.id}
+                      title="習得済み"
+                    >
+                      {updatingId === sentence.id && sentence.learningStatus !== 'MASTERED' ? '...' : '習得済み'}
+                    </button>
+                  </div>
                 </div>
               )}
               
@@ -467,7 +505,6 @@ const SentenceManagement = () => {
                 <button 
                   className="action-button small add-button" 
                   onClick={(e) => {
-                    e.stopPropagation();
                     addSentenceToUser(sentence.id);
                   }}
                 >
@@ -484,6 +521,12 @@ const SentenceManagement = () => {
   return (
     <div className="sentence-management">
       <h1>センテンス管理</h1>
+      
+      {toast.show && (
+        <div className={`toast ${toast.type}`}>
+          <div className="toast-message">{toast.message}</div>
+        </div>
+      )}
       
       <div className="sentence-input-container">
         <TextInputForm 
