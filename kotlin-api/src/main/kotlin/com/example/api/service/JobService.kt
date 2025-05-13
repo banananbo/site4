@@ -4,6 +4,7 @@ import com.example.api.entity.JobStatusEntity
 import com.example.api.entity.JobTypeEntity
 import com.example.api.entity.ProcessingJobEntity
 import com.example.api.entity.SentenceEntity
+import com.example.api.entity.SentenceDifficultyEntity
 import com.example.api.entity.WordEntity
 import com.example.api.entity.WordSentenceEntity
 import com.example.api.entity.WordStatusEntity
@@ -171,6 +172,9 @@ class JobService(
                 id = UUID.randomUUID().toString(),
                 sentence = example.english,
                 translation = example.japanese,
+                source = null,
+                difficulty = SentenceDifficultyEntity.medium,
+                isAnalyzed = false,
                 createdAt = LocalDateTime.now(),
                 updatedAt = LocalDateTime.now()
             ).also { sentenceRepository.save(it) }

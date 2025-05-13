@@ -11,12 +11,6 @@ enum class LearningStatus {
     NEW, LEARNING, MASTERED
 }
 
-data class Sentence(
-    val id: String = UUID.randomUUID().toString(),
-    val sentence: String,
-    val translation: String
-)
-
 data class Word(
     val id: String = UUID.randomUUID().toString(),
     val word: String,
