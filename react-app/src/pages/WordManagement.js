@@ -19,6 +19,12 @@ const WordManagement = () => {
   const [selectedWordDetails, setSelectedWordDetails] = useState(null); // 選択された単語の詳細情報
   const [showModal, setShowModal] = useState(false); // モーダル表示の状態
   const [detailsLoading, setDetailsLoading] = useState(false); // 詳細情報の読み込み状態
+  
+  // センテンス詳細表示用の状態
+  const [selectedSentence, setSelectedSentence] = useState(null); // 選択されたセンテンス
+  const [showSentenceModal, setShowSentenceModal] = useState(false); // センテンスモーダル表示状態
+  const [sentenceDetailsLoading, setSentenceDetailsLoading] = useState(false); // センテンス詳細読み込み状態
+  
   const { user, getAccessToken } = useContext(AuthContext);
 
   // ユーザーの単語一覧を取得
@@ -280,6 +286,25 @@ const WordManagement = () => {
     }
   };
 
+  // センテンスをクリックしたときに詳細を表示
+  const handleSentenceClick = (sentence) => {
+    setSelectedSentence(sentence);
+    setShowSentenceModal(true);
+  };
+
+  // センテンスモーダルを閉じる
+  const closeSentenceModal = () => {
+    setShowSentenceModal(false);
+    setSelectedSentence(null);
+  };
+
+  // センテンスモーダルの外側をクリックしたときにモーダルを閉じる
+  const handleSentenceOutsideClick = (e) => {
+    if (e.target.className === 'modal-overlay') {
+      closeSentenceModal();
+    }
+  };
+
   // 単語詳細モーダル
   const WordDetailModal = () => {
     // 表示する単語データ（詳細情報がある場合はそれを使用、なければ基本情報を使用）
@@ -380,6 +405,84 @@ const WordManagement = () => {
     );
   };
 
+  // センテンス詳細モーダル
+  const SentenceDetailModal = () => {
+    if (!selectedSentence) return null;
+
+    return (
+      <div className="modal-overlay" onClick={handleSentenceOutsideClick}>
+        <div className="modal-content">
+          <button className="modal-close" onClick={closeSentenceModal}>×</button>
+          
+          {sentenceDetailsLoading ? (
+            <div className="loading">詳細情報を読み込み中...</div>
+          ) : (
+            <div className="sentence-detail-card">
+              <h3 className="sentence-title">{selectedSentence.sentence}</h3>
+              
+              <div className="sentence-info">
+                <div className="info-row">
+                  <span className="info-label">日本語訳:</span>
+                  <span className="info-value">{selectedSentence.translation || '-'}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">難易度:</span>
+                  <span className="info-value">{selectedSentence.difficulty || 'MEDIUM'}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">分析状態:</span>
+                  <span className="info-value">{selectedSentence.isAnalyzed ? '分析済み' : '分析中'}</span>
+                </div>
+              </div>
+              
+              {selectedSentence.idioms && selectedSentence.idioms.length > 0 && (
+                <div className="idioms-section">
+                  <h4>イディオム</h4>
+                  <ul className="idioms-list">
+                    {selectedSentence.idioms.map((idiom, index) => (
+                      <li key={index} className="idiom-item">
+                        <div className="idiom-expression">{idiom.idiom}</div>
+                        <div className="idiom-meaning">{idiom.meaning}</div>
+                        {idiom.example && <div className="idiom-example">例: {idiom.example}</div>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {selectedSentence.grammars && selectedSentence.grammars.length > 0 && (
+                <div className="grammars-section">
+                  <h4>文法</h4>
+                  <ul className="grammars-list">
+                    {selectedSentence.grammars.map((grammar, index) => (
+                      <li key={index} className="grammar-item">
+                        <div className="grammar-pattern">{grammar.pattern}</div>
+                        <div className="grammar-explanation">{grammar.explanation}</div>
+                        <div className="grammar-level">レベル: {grammar.level}</div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              <div className="actions">
+                <button 
+                  className="action-button remove-button" 
+                  onClick={() => {
+                    removeSentenceFromUser(selectedSentence.id);
+                    closeSentenceModal();
+                  }}
+                >
+                  センテンスを削除する
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // 単語一覧テーブルのレンダリング
   const renderWordTable = (wordList, isMyPage) => {
     return (
@@ -448,8 +551,8 @@ const WordManagement = () => {
         <tbody>
           {sentenceList.map(sentence => (
             <tr key={sentence.id}>
-              <td className="sentence-cell">
-                <span className="sentence-text">{sentence.sentence}</span>
+              <td className="sentence-cell" onClick={() => handleSentenceClick(sentence)}>
+                <span className="clickable-sentence">{sentence.sentence}</span>
               </td>
               <td>{sentence.translation || '-'}</td>
               <td>{sentence.isAnalyzed ? '分析済み' : '分析中'}</td>
@@ -554,6 +657,7 @@ const WordManagement = () => {
       </div>
       
       {showModal && <WordDetailModal />}
+      {showSentenceModal && <SentenceDetailModal />}
     </div>
   );
 };

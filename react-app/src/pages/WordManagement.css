@@ -369,4 +369,78 @@
 .sentence-text {
   font-weight: 500;
   color: #343a40;
+}
+
+.clickable-sentence {
+  color: #007bff;
+  font-weight: 500;
+  position: relative;
+  cursor: pointer;
+}
+
+.clickable-sentence:hover {
+  text-decoration: underline;
+}
+
+.sentence-detail-card {
+  padding: 24px;
+}
+
+.sentence-title {
+  font-size: 20px;
+  margin-top: 0;
+  margin-bottom: 24px;
+  color: #343a40;
+  text-align: center;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 12px;
+}
+
+.sentence-info {
+  margin-bottom: 24px;
+}
+
+/* イディオムセクションのスタイル */
+.idioms-section h4,
+.grammars-section h4 {
+  font-size: 18px;
+  margin-top: 20px;
+  margin-bottom: 16px;
+  color: #343a40;
+}
+
+.idioms-list,
+.grammars-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.idiom-item,
+.grammar-item {
+  padding: 12px;
+  border-radius: 4px;
+  background-color: #f8f9fa;
+  margin-bottom: 12px;
+  border-left: 3px solid #17a2b8;
+}
+
+.idiom-expression,
+.grammar-pattern {
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #343a40;
+}
+
+.idiom-meaning,
+.grammar-explanation {
+  margin-bottom: 6px;
+  color: #495057;
+}
+
+.idiom-example,
+.grammar-level {
+  font-size: 0.9em;
+  font-style: italic;
+  color: #6c757d;
 } 

@@ -4,6 +4,7 @@ package com.example.api.model
  * 文分析のレスポンスを表すデータクラス
  */
 data class SentenceAnalysisResponse(
+    val translation: String? = null,
     val idioms: List<IdiomInfo> = emptyList(),
     val grammars: List<GrammarInfo> = emptyList()
 ) {

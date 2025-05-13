@@ -304,9 +304,32 @@ class JobService(
             
             // 文を分析済みに更新
             sentenceEntity.isAnalyzed = true
-            sentenceEntity.updatedAt = LocalDateTime.now()
-            sentenceRepository.save(sentenceEntity)
-            logger.info("センテンスを分析済みに更新しました: ${sentenceId}")
+            
+            // 分析結果に翻訳情報が含まれている場合は更新
+            if (analysisResult.translation != null && analysisResult.translation.isNotBlank()) {
+                logger.info("OpenAI APIから取得した翻訳で更新します: ${analysisResult.translation}")
+                
+                // 読み取り専用プロパティが含まれるため、新しいエンティティを作成して置き換え
+                val updatedEntity = SentenceEntity(
+                    id = sentenceEntity.id,
+                    sentence = sentenceEntity.sentence,
+                    translation = analysisResult.translation, // 新しい翻訳で更新
+                    source = sentenceEntity.source,
+                    difficulty = sentenceEntity.difficulty,
+                    isAnalyzed = true,
+                    createdAt = sentenceEntity.createdAt,
+                    updatedAt = LocalDateTime.now()
+                )
+                
+                // 更新された文を保存
+                sentenceRepository.save(updatedEntity)
+                logger.info("センテンスを分析済みに更新し、翻訳も更新しました: ${sentenceId}")
+            } else {
+                // 翻訳の更新がない場合は、既存の文を更新
+                sentenceEntity.updatedAt = LocalDateTime.now()
+                sentenceRepository.save(sentenceEntity)
+                logger.info("センテンスを分析済みに更新しました: ${sentenceId}")
+            }
             
             // ジョブを完了状態に更新
             job.status = JobStatusEntity.completed

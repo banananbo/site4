@@ -145,6 +145,7 @@ class OpenAIService(
             以下の正確なJSONフォーマットで返してください：
             
             {
+              "translation": "日本語訳",
               "idioms": [
                 {
                   "idiom": "イディオム表現",
@@ -162,9 +163,6 @@ class OpenAIService(
             }
             
             文: $sentence
-            日本語訳: $translation
-
-            注意: 「ここに入れてください」などの説明文を付けないでください。必ず上記のJSON形式のみを返してください。
         """.trimIndent()
         
         try {
@@ -220,6 +218,9 @@ class OpenAIService(
                     try {
                         val jsonNode = objectMapper.readTree(extractedJson)
                         
+                        // translationノードの処理
+                        val translation = jsonNode.get("translation")?.asText()
+                        
                         // idiomsノードの処理
                         val idioms = mutableListOf<SentenceAnalysisResponse.IdiomInfo>()
                         val idiomsNode = jsonNode.get("idioms")
@@ -254,12 +255,12 @@ class OpenAIService(
                             }
                         }
                         
-                        logger.info("手動JSONパースに成功しました: イディオム=${idioms.size}, 文法=${grammars.size}")
-                        SentenceAnalysisResponse(idioms, grammars)
+                        logger.info("手動JSONパースに成功しました: 翻訳=${translation != null}, イディオム=${idioms.size}, 文法=${grammars.size}")
+                        SentenceAnalysisResponse(translation, idioms, grammars)
                     } catch (e3: Exception) {
                         logger.error("手動JSONパースにも失敗しました: ${e3.message}")
                         // すべてのパースが失敗した場合は空のレスポンスを返す
-                        SentenceAnalysisResponse(emptyList(), emptyList())
+                        SentenceAnalysisResponse(null, emptyList(), emptyList())
                     }
                 }
             }
@@ -295,7 +296,7 @@ class OpenAIService(
             }
             
             // エラー時は空のレスポンスを返す
-            return SentenceAnalysisResponse(emptyList(), emptyList())
+            return SentenceAnalysisResponse(null, emptyList(), emptyList())
         }
     }
 
