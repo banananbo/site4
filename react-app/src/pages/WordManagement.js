@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../contexts/AuthContext';
 import TextInputForm from '../components/TextInputForm';
+import LearningStatusSelector from '../components/LearningStatusSelector';
 import './WordManagement.css';
 
 const WordManagement = () => {
@@ -26,6 +27,7 @@ const WordManagement = () => {
   const [sentenceDetailsLoading, setSentenceDetailsLoading] = useState(false); // センテンス詳細読み込み状態
   
   const { user, getAccessToken } = useContext(AuthContext);
+  const [updateStatusLoading, setUpdateStatusLoading] = useState(false);
 
   // ユーザーの単語一覧を取得
   const fetchUserWords = async () => {
@@ -34,14 +36,14 @@ const WordManagement = () => {
       const token = await getAccessToken();
       
       // APIエンドポイントのURL
-      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/words`;
+      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/words/user`;
       
       // 認証トークンをヘッダーに設定
       const headers = {
         Authorization: `Bearer ${token}`
       };
       
-      console.log('ユーザー単語リスト取得リクエスト:', { userId: user?.id });
+      console.log('ユーザー単語リスト取得リクエスト');
       const response = await axios.get(apiUrl, { headers });
       console.log('API response:', response.data);
       
@@ -305,12 +307,66 @@ const WordManagement = () => {
     }
   };
 
+  // 学習状態を更新する関数
+  const updateLearningStatus = async (wordId, status) => {
+    if (!user) return;
+    
+    setUpdateStatusLoading(true);
+    try {
+      const token = await getAccessToken();
+      
+      // APIエンドポイントのURL（userIdパラメータを削除）
+      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/words/${wordId}/learning-status?status=${status}`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '学習状態の更新に失敗しました');
+      }
+      
+      const updatedWord = await response.json();
+      
+      // 単語リストを更新（アクティブなタブに応じて更新する変数を選択）
+      if (activeTab === 'mypage') {
+        const updatedUserWords = words.map(word => 
+          word.id === wordId ? { ...word, learningStatus: updatedWord.learningStatus } : word
+        );
+        setWords(updatedUserWords);
+      } else {
+        const updatedAllWords = allWords.map(word => 
+          word.id === wordId ? { ...word, learningStatus: updatedWord.learningStatus } : word
+        );
+        setAllWords(updatedAllWords);
+      }
+      
+      // モーダル内の単語データを更新
+      if (selectedWord && selectedWord.id === wordId) {
+        setSelectedWord({ ...selectedWord, learningStatus: updatedWord.learningStatus });
+      }
+      
+      // 詳細情報が読み込まれている場合はそちらも更新
+      if (selectedWordDetails && selectedWordDetails.id === wordId) {
+        setSelectedWordDetails({ ...selectedWordDetails, learningStatus: updatedWord.learningStatus });
+      }
+      
+    } catch (error) {
+      console.error('学習状態の更新エラー:', error);
+      alert(error.message);
+    } finally {
+      setUpdateStatusLoading(false);
+    }
+  };
+
   // 単語詳細モーダル
   const WordDetailModal = () => {
-    // 表示する単語データ（詳細情報がある場合はそれを使用、なければ基本情報を使用）
-    const word = selectedWordDetails || selectedWord;
-    
-    if (!word) return null;
+    if (!selectedWord) return null;
 
     return (
       <div className="modal-overlay" onClick={handleOutsideClick}>
@@ -321,49 +377,45 @@ const WordManagement = () => {
             <div className="loading">詳細情報を読み込み中...</div>
           ) : (
             <div className="word-detail-card">
-              <h3 className="word-title">{word.word}</h3>
+              <h3 className="word-title">{selectedWord.word}</h3>
               <div className="word-info">
                 <div className="info-row">
                   <span className="info-label">意味:</span>
-                  <span className="info-value">{word.meaning || '-'}</span>
+                  <span className="info-value">{selectedWord.meaning || '-'}</span>
                 </div>
                 <div className="info-row">
                   <span className="info-label">品詞:</span>
-                  <span className="info-value">{word.partOfSpeech || '-'}</span>
+                  <span className="info-value">{selectedWord.partOfSpeech || '-'}</span>
                 </div>
                 <div className="info-row">
-                  <span className="info-label">ステータス:</span>
-                  <span className={`status status-${word.status?.toLowerCase() || 'pending'}`}>
-                    {word.status === 'PENDING' && '処理待ち'}
-                    {word.status === 'PROCESSING' && '処理中'}
-                    {word.status === 'COMPLETED' && '完了'}
-                    {word.status === 'ERROR' && 'エラー'}
-                    {(!word.status || 
-                      (word.status !== 'PENDING' && 
-                       word.status !== 'PROCESSING' && 
-                       word.status !== 'COMPLETED' && 
-                       word.status !== 'ERROR')) && '処理待ち'}
+                  <span className="info-label">処理状況:</span>
+                  <span className={`status status-${selectedWord.status?.toLowerCase() || 'pending'}`}>
+                    {selectedWord.status === 'PENDING' && '処理待ち'}
+                    {selectedWord.status === 'PROCESSING' && '処理中'}
+                    {selectedWord.status === 'COMPLETED' && '完了'}
+                    {selectedWord.status === 'ERROR' && 'エラー'}
+                    {(!selectedWord.status || 
+                      (selectedWord.status !== 'PENDING' && 
+                       selectedWord.status !== 'PROCESSING' && 
+                       selectedWord.status !== 'COMPLETED' && 
+                       selectedWord.status !== 'ERROR')) && '処理待ち'}
                   </span>
                 </div>
-                <div className="info-row">
-                  <span className="info-label">学習状況:</span>
-                  <span className={`learning-status learning-status-${word.learningStatus?.toLowerCase() || 'new'}`}>
-                    {word.learningStatus === 'NEW' && '未学習'}
-                    {word.learningStatus === 'LEARNING' && '学習中'}
-                    {word.learningStatus === 'MASTERED' && '習得済み'}
-                    {(!word.learningStatus || 
-                      (word.learningStatus !== 'NEW' && 
-                       word.learningStatus !== 'LEARNING' && 
-                       word.learningStatus !== 'MASTERED')) && '未学習'}
-                  </span>
-                </div>
+                
+                {activeTab === 'mypage' && (
+                  <LearningStatusSelector 
+                    currentStatus={selectedWord.learningStatus}
+                    onStatusChange={(status) => updateLearningStatus(selectedWord.id, status)}
+                    itemType="word"
+                  />
+                )}
               </div>
 
               <div className="examples-section">
                 <h4>例文</h4>
-                {word.sentences && word.sentences.length > 0 ? (
+                {selectedWord.sentences && selectedWord.sentences.length > 0 ? (
                   <ul className="examples-list">
-                    {word.sentences.map((sentence, index) => (
+                    {selectedWord.sentences.map((sentence, index) => (
                       <li key={index} className="example-item">
                         <div className="sentence">{sentence.sentence}</div>
                         <div className="translation">{sentence.translation}</div>
@@ -380,7 +432,7 @@ const WordManagement = () => {
                   <button 
                     className="action-button remove-button" 
                     onClick={() => {
-                      removeWordFromUser(word.id);
+                      removeWordFromUser(selectedWord.id);
                       closeModal();
                     }}
                   >
@@ -390,7 +442,7 @@ const WordManagement = () => {
                   <button 
                     className="action-button add-button" 
                     onClick={() => {
-                      addWordToUser(word.id);
+                      addWordToUser(selectedWord.id);
                       closeModal();
                     }}
                   >

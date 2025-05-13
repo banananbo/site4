@@ -312,4 +312,67 @@ class SentenceService(
         logger.info("ユーザー(ID: $userId)とセンテンス(ID: $sentenceId)の関連付けを削除しました")
         return true
     }
+
+    /**
+     * センテンスの学習状態を更新する
+     */
+    @Transactional
+    fun updateLearningStatus(sentenceId: String, userId: Long, learningStatus: LearningStatus): Sentence {
+        // センテンスの存在確認
+        val sentenceEntity = sentenceRepository.findById(sentenceId).orElseThrow {
+            throw RuntimeException("センテンスが見つかりません (ID: $sentenceId)")
+        }
+        
+        // ユーザーと文の関連を取得
+        val userSentenceEntity = userSentenceRepository.findByUserIdAndSentenceId(userId, sentenceId)
+        
+        if (userSentenceEntity == null) {
+            // 関連がなければ新規作成
+            val now = LocalDateTime.now()
+            val entityLearningStatus = when(learningStatus) {
+                LearningStatus.NEW -> LearningStatusEntity.new
+                LearningStatus.LEARNING -> LearningStatusEntity.learning
+                LearningStatus.MASTERED -> LearningStatusEntity.mastered
+            }
+            
+            val newUserSentence = UserSentenceEntity(
+                id = UUID.randomUUID().toString(),
+                userId = userId,
+                sentenceId = sentenceId,
+                learningStatus = entityLearningStatus,
+                isFavorite = false,
+                lastReviewedAt = LocalDateTime.now(),
+                createdAt = now,
+                updatedAt = now
+            )
+            
+            userSentenceRepository.save(newUserSentence)
+            logger.info("ユーザー(ID: $userId)とセンテンス(ID: $sentenceId)の関連を作成し、学習状態を${learningStatus}に設定しました")
+        } else {
+            // 既存の関連を更新
+            // UserSentenceEntityのlearningStatusがvalで定義されているため、新しいインスタンスを作成して置き換え
+            val entityLearningStatus = when(learningStatus) {
+                LearningStatus.NEW -> LearningStatusEntity.new
+                LearningStatus.LEARNING -> LearningStatusEntity.learning
+                LearningStatus.MASTERED -> LearningStatusEntity.mastered
+            }
+            
+            val updatedUserSentence = UserSentenceEntity(
+                id = userSentenceEntity.id,
+                userId = userSentenceEntity.userId,
+                sentenceId = userSentenceEntity.sentenceId,
+                learningStatus = entityLearningStatus,
+                isFavorite = userSentenceEntity.isFavorite,
+                lastReviewedAt = LocalDateTime.now(),
+                createdAt = userSentenceEntity.createdAt,
+                updatedAt = LocalDateTime.now()
+            )
+            
+            userSentenceRepository.save(updatedUserSentence)
+            logger.info("ユーザー(ID: $userId)のセンテンス(ID: $sentenceId)の学習状態を${learningStatus}に更新しました")
+        }
+        
+        // センテンスの詳細情報を取得して返す
+        return getSentenceById(sentenceId)
+    }
 } 

@@ -9,4 +9,6 @@ import org.springframework.stereotype.Repository
 @Repository
 interface UserWordRepository : JpaRepository<UserWordEntity, String> {
     fun findByUserId(userId: Long, pageable: Pageable): Page<UserWordEntity>
+    
+    fun findByUserIdAndWordId(userId: Long, wordId: String): UserWordEntity?
 } 

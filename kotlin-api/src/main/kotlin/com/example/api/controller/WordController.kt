@@ -3,6 +3,7 @@ package com.example.api.controller
 import com.example.api.model.Word
 import com.example.api.service.WordService
 import com.example.api.service.UserService
+import com.example.api.util.AuthUtils
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -76,14 +77,36 @@ class WordController(
 ) {
 
     /**
+     * ユーザーの単語一覧を取得する
+     */
+    @GetMapping("/user")
+    fun getUserWords(
+        principal: Principal?
+    ): ResponseEntity<List<WordResponse>> {
+        // AuthUtilsを使ってユーザーIDを取得
+        val userId = principal?.let { AuthUtils.getUserIdFromPrincipal(it, userService) }
+        
+        // ページングと並び替えの設定
+        val pageable = PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "createdAt"))
+        
+        // ユーザーの単語一覧を取得
+        val words = if (userId != null) {
+            wordService.getWordsByUserId(userId, pageable)
+        } else {
+            // 認証情報がない場合は空リストを返す
+            emptyList()
+        }
+        
+        return ResponseEntity.ok(words.map { WordResponse.fromWord(it) })
+    }
+
+    /**
      * 単語一覧を取得する
      */
     @GetMapping
     fun getWords(principal: Principal?): ResponseEntity<List<WordResponse>> {
-        // ユーザーIDを取得
-        val auth0Id = principal?.name
-        val user = auth0Id?.let { userService.findUserByAuth0Id(it).orElse(null) }
-        val userId = user?.id
+        // AuthUtilsを使ってユーザーIDを取得
+        val userId = principal?.let { AuthUtils.getUserIdFromPrincipal(it, userService) }
         
         // ページングと並び替えの設定
         val pageable = PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "createdAt"))
@@ -107,9 +130,8 @@ class WordController(
         @RequestBody request: RegisterWordRequest,
         principal: Principal?
     ): ResponseEntity<WordResponse> {
-        // ユーザーIDを取得
-        val auth0Id = principal?.name
-        val userId = auth0Id?.let { userService.findUserByAuth0Id(it).orElse(null)?.id }
+        // AuthUtilsを使ってユーザーIDを取得
+        val userId = principal?.let { AuthUtils.getUserIdFromPrincipal(it, userService) }
         
         val registeredWord = wordService.registerWord(request.word, userId)
         return ResponseEntity.status(HttpStatus.CREATED).body(WordResponse.fromWord(registeredWord))
@@ -146,18 +168,16 @@ class WordController(
         @RequestBody request: WordRelationRequest,
         principal: Principal?
     ): ResponseEntity<WordRelationResponse> {
-        // ユーザーIDを取得
-        val auth0Id = principal?.name
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        // 認証情報がない場合
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(WordRelationResponse(false, "認証が必要です"))
+        }
         
-        val user = userService.findUserByAuth0Id(auth0Id).orElse(null)
-            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(WordRelationResponse(false, "ユーザーが見つかりません"))
-        
-        val userId = user.id
-            ?: return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(WordRelationResponse(false, "ユーザーIDが無効です"))
+        // AuthUtilsを使ってユーザーIDを取得
+        val userId = AuthUtils.getUserIdFromPrincipal(principal, userService)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(WordRelationResponse(false, "ユーザー情報を取得できませんでした"))
         
         try {
             val result = wordService.addWordToUser(userId, request.wordId)
@@ -183,18 +203,16 @@ class WordController(
         @RequestBody request: WordRelationRequest,
         principal: Principal?
     ): ResponseEntity<WordRelationResponse> {
-        // ユーザーIDを取得
-        val auth0Id = principal?.name
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        // 認証情報がない場合
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(WordRelationResponse(false, "認証が必要です"))
+        }
         
-        val user = userService.findUserByAuth0Id(auth0Id).orElse(null)
-            ?: return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(WordRelationResponse(false, "ユーザーが見つかりません"))
-        
-        val userId = user.id
-            ?: return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(WordRelationResponse(false, "ユーザーIDが無効です"))
+        // AuthUtilsを使ってユーザーIDを取得
+        val userId = AuthUtils.getUserIdFromPrincipal(principal, userService)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(WordRelationResponse(false, "ユーザー情報を取得できませんでした"))
         
         try {
             val result = wordService.removeWordFromUser(userId, request.wordId)

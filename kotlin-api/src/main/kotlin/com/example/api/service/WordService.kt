@@ -259,4 +259,55 @@ class WordService(
         userWordRepository.deleteById(userWord.id)
         return true
     }
+
+    /**
+     * 単語の学習状態を更新する
+     */
+    @Transactional
+    fun updateLearningStatus(wordId: String, userId: Long, learningStatus: LearningStatus): Word {
+        // ワードの存在確認
+        val wordEntity = wordRepository.findById(wordId).orElseThrow {
+            throw RuntimeException("単語が見つかりません (ID: $wordId)")
+        }
+        
+        // ユーザーと単語の関連を取得
+        val userWordEntity = userWordRepository.findByUserIdAndWordId(userId, wordId) ?: run {
+            // 関連がなければ作成する
+            val now = LocalDateTime.now()
+            val userWord = UserWord(
+                userId = userId,
+                wordId = wordId,
+                learningStatus = learningStatus,
+                isFavorite = false,
+                lastReviewedAt = LocalDateTime.now(),
+                createdAt = now,
+                updatedAt = now
+            )
+            
+            userWordRepository.save(UserWordEntity.fromDomain(userWord))
+            return wordEntity.toDomain().copy(
+                sentences = getSentencesForWord(wordId),
+                learningStatus = learningStatus
+            )
+        }
+        
+        // 学習状態を更新
+        val entityLearningStatus = when(learningStatus) {
+            LearningStatus.NEW -> LearningStatusEntity.new
+            LearningStatus.LEARNING -> LearningStatusEntity.learning
+            LearningStatus.MASTERED -> LearningStatusEntity.mastered
+        }
+        
+        userWordEntity.learningStatus = entityLearningStatus
+        userWordEntity.lastReviewedAt = LocalDateTime.now()
+        userWordEntity.updatedAt = LocalDateTime.now()
+        
+        userWordRepository.save(userWordEntity)
+        
+        // ワードのドメインモデルを返す（更新された学習状態を含む）
+        return wordEntity.toDomain().copy(
+            sentences = getSentencesForWord(wordId),
+            learningStatus = learningStatus
+        )
+    }
 }
