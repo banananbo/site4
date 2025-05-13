@@ -8,4 +8,5 @@ import org.springframework.stereotype.Repository
 interface SentenceIdiomRepository : JpaRepository<SentenceIdiomEntity, String> {
     fun findBySentenceId(sentenceId: String): List<SentenceIdiomEntity>
     fun findByIdiomId(idiomId: String): List<SentenceIdiomEntity>
+    fun findBySentenceIdAndIdiomId(sentenceId: String, idiomId: String): SentenceIdiomEntity?
 } 

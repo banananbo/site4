@@ -1,16 +1,19 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../contexts/AuthContext';
-import WordForm from '../components/WordForm';
+import TextInputForm from '../components/TextInputForm';
 import './WordManagement.css';
 
 const WordManagement = () => {
   const [words, setWords] = useState([]);
   const [allWords, setAllWords] = useState([]);
+  const [sentences, setSentences] = useState([]);
   const [loading, setLoading] = useState(true);
   const [allWordsLoading, setAllWordsLoading] = useState(true);
+  const [sentencesLoading, setSentencesLoading] = useState(true);
   const [error, setError] = useState('');
   const [allWordsError, setAllWordsError] = useState('');
+  const [sentencesError, setSentencesError] = useState('');
   const [activeTab, setActiveTab] = useState('mypage'); // デフォルトは「マイページ」タブ
   const [selectedWord, setSelectedWord] = useState(null); // 選択された単語
   const [selectedWordDetails, setSelectedWordDetails] = useState(null); // 選択された単語の詳細情報
@@ -181,6 +184,69 @@ const WordManagement = () => {
     } catch (err) {
       console.error('単語削除APIエラー:', err);
       return false;
+    }
+  };
+
+  // ユーザーのセンテンス一覧を取得
+  const fetchUserSentences = async () => {
+    try {
+      setSentencesLoading(true);
+      const token = await getAccessToken();
+      
+      // APIエンドポイントのURL
+      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/sentences`;
+      
+      // 認証トークンをヘッダーに設定
+      const headers = {
+        Authorization: `Bearer ${token}`
+      };
+      
+      console.log('ユーザーセンテンスリスト取得リクエスト');
+      const response = await axios.get(apiUrl, { headers });
+      console.log('API response (sentences):', response.data);
+      
+      // レスポンスデータの形式をチェック
+      if (response.data && Array.isArray(response.data)) {
+        setSentences(response.data);
+      } else if (response.data && typeof response.data === 'object') {
+        // オブジェクトの場合は、配列プロパティを探す
+        const sentencesArray = response.data.items || response.data.sentences || response.data.content || [];
+        setSentences(Array.isArray(sentencesArray) ? sentencesArray : []);
+      } else {
+        setSentences([]);
+      }
+      
+      setSentencesError('');
+    } catch (err) {
+      console.error('センテンスリスト取得エラー:', err);
+      setSentencesError('センテンスリストの取得に失敗しました。');
+      setSentences([]);
+    } finally {
+      setSentencesLoading(false);
+    }
+  };
+
+  // センテンスをユーザーから削除
+  const removeSentenceFromUser = async (sentenceId) => {
+    try {
+      const token = await getAccessToken();
+      
+      // APIエンドポイントのURL
+      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/sentences/${sentenceId}/remove`;
+      
+      // 認証トークンをヘッダーに設定
+      const headers = {
+        Authorization: `Bearer ${token}`
+      };
+      
+      console.log('センテンス削除リクエスト:', { sentenceId });
+      await axios.delete(apiUrl, { headers });
+      
+      // 成功したら単語リストを更新
+      fetchUserSentences();
+    } catch (err) {
+      console.error('センテンス削除エラー:', err);
+      alert('センテンスの削除に失敗しました。');
     }
   };
 
@@ -367,9 +433,45 @@ const WordManagement = () => {
     );
   };
 
+  // センテンス一覧テーブルのレンダリング
+  const renderSentenceTable = (sentenceList) => {
+    return (
+      <table>
+        <thead>
+          <tr>
+            <th>センテンス</th>
+            <th>日本語訳</th>
+            <th>分析状態</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sentenceList.map(sentence => (
+            <tr key={sentence.id}>
+              <td className="sentence-cell">
+                <span className="sentence-text">{sentence.sentence}</span>
+              </td>
+              <td>{sentence.translation || '-'}</td>
+              <td>{sentence.isAnalyzed ? '分析済み' : '分析中'}</td>
+              <td>
+                <button 
+                  className="action-button remove-button" 
+                  onClick={() => removeSentenceFromUser(sentence.id)}
+                >
+                  削除
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  };
+
   useEffect(() => {
     if (user) {
       fetchUserWords();
+      fetchUserSentences();
     }
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -378,7 +480,10 @@ const WordManagement = () => {
       <h1>英単語管理</h1>
       
       <div className="word-form-section">
-        <WordForm onWordAdded={fetchUserWords} />
+        <TextInputForm onInputProcessed={() => {
+          fetchUserWords();
+          fetchUserSentences();
+        }} />
       </div>
       
       <div className="tabs-container">
@@ -412,6 +517,20 @@ const WordManagement = () => {
             ) : (
               <div className="word-list">
                 {renderWordTable(words, true)}
+              </div>
+            )}
+
+            <h2>{user?.name || 'あなた'}の登録センテンスリスト</h2>
+            
+            {sentencesLoading ? (
+              <div className="loading">読み込み中...</div>
+            ) : sentencesError ? (
+              <div className="error-message">{sentencesError}</div>
+            ) : !sentences || sentences.length === 0 ? (
+              <div className="empty-list">登録されたセンテンスはありません</div>
+            ) : (
+              <div className="sentence-list">
+                {renderSentenceTable(sentences)}
               </div>
             )}
           </>

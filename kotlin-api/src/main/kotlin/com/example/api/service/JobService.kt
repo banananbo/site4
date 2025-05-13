@@ -8,10 +8,20 @@ import com.example.api.entity.SentenceDifficultyEntity
 import com.example.api.entity.WordEntity
 import com.example.api.entity.WordSentenceEntity
 import com.example.api.entity.WordStatusEntity
+import com.example.api.entity.IdiomEntity
+import com.example.api.entity.GrammarEntity
+import com.example.api.entity.GrammarLevelEntity
+import com.example.api.entity.SentenceIdiomEntity
+import com.example.api.entity.SentenceGrammarEntity
+import com.example.api.model.SentenceAnalysisResponse
 import com.example.api.repository.JobRepository
 import com.example.api.repository.SentenceRepository
 import com.example.api.repository.WordRepository
 import com.example.api.repository.WordSentenceRepository
+import com.example.api.repository.IdiomRepository
+import com.example.api.repository.GrammarRepository
+import com.example.api.repository.SentenceIdiomRepository
+import com.example.api.repository.SentenceGrammarRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -30,7 +40,11 @@ class JobService(
     private val sentenceRepository: SentenceRepository,
     private val wordSentenceRepository: WordSentenceRepository,
     private val openAIService: OpenAIService,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val idiomRepository: IdiomRepository,
+    private val grammarRepository: GrammarRepository,
+    private val sentenceIdiomRepository: SentenceIdiomRepository,
+    private val sentenceGrammarRepository: SentenceGrammarRepository
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     
@@ -69,6 +83,7 @@ class JobService(
                     JobTypeEntity.word_processing -> processWordJob(job)
                     JobTypeEntity.batch_translation -> processBatchTranslationJob(job)
                     JobTypeEntity.learning_reminder -> processLearningReminderJob(job)
+                    JobTypeEntity.sentence_analysis -> processSentenceAnalysisJob(job)
                 }
             } catch (e: Exception) {
                 handleJobError(job, e)
@@ -152,6 +167,157 @@ class JobService(
         job.status = JobStatusEntity.completed
         job.updatedAt = LocalDateTime.now()
         jobRepository.save(job)
+    }
+    
+    /**
+     * 文分析ジョブを処理する
+     */
+    @Transactional
+    fun processSentenceAnalysisJob(job: ProcessingJobEntity) {
+        // ジョブのステータスを処理中に更新
+        job.status = JobStatusEntity.processing
+        job.updatedAt = LocalDateTime.now()
+        jobRepository.save(job)
+        
+        try {
+            // ペイロードからsentence_idを取得
+            val payload = objectMapper.readTree(job.payload)
+            val sentenceId = payload.get("sentence_id").asText()
+            val sentenceText = payload.get("sentence").asText()
+            val translationText = payload.get("translation").asText()
+            
+            logger.info("文分析ジョブを開始します: ${job.id}, センテンス: '$sentenceText'")
+            
+            // 文を取得
+            val sentenceEntity = sentenceRepository.findById(sentenceId).orElseThrow {
+                throw RuntimeException("文が見つかりません (ID: $sentenceId)")
+            }
+            
+            // すでに分析済みの場合はスキップ
+            if (sentenceEntity.isAnalyzed) {
+                job.status = JobStatusEntity.completed
+                job.updatedAt = LocalDateTime.now()
+                jobRepository.save(job)
+                logger.info("文分析ジョブ ${job.id} (文: '${sentenceText}') はすでに分析済みのためスキップしました")
+                return
+            }
+            
+            // OpenAI APIを使用して文の分析を実行
+            logger.info("文分析のためにOpenAI APIを呼び出します: ${job.id}")
+            val analysisResult = openAIService.analyzeSentence(sentenceText, translationText)
+            logger.info("OpenAI API解析結果: イディオム数=${analysisResult.idioms.size}, 文法数=${analysisResult.grammars.size}")
+            
+            // 解析結果が空の場合
+            if (analysisResult.idioms.isEmpty() && analysisResult.grammars.isEmpty()) {
+                logger.warn("文分析の結果、イディオムと文法が見つかりませんでした: ${job.id}")
+            }
+            
+            // 分析結果からイディオムを処理
+            var idiomCount = 0
+            analysisResult.idioms.forEach { idiomInfo: SentenceAnalysisResponse.IdiomInfo ->
+                try {
+                    logger.debug("イディオム処理: '${idiomInfo.idiom}'")
+                    // イディオムを検索または新規作成
+                    val idiomEntity = idiomRepository.findByIdiom(idiomInfo.idiom) ?: run {
+                        // 新しいイディオムを保存
+                        val newIdiom = IdiomEntity(
+                            id = UUID.randomUUID().toString(),
+                            idiom = idiomInfo.idiom,
+                            meaning = idiomInfo.meaning,
+                            example = idiomInfo.example,
+                            createdAt = LocalDateTime.now(),
+                            updatedAt = LocalDateTime.now()
+                        )
+                        logger.info("新しいイディオムを保存します: '${idiomInfo.idiom}'")
+                        idiomRepository.save(newIdiom)
+                    }
+                    
+                    // 既存の関連を確認
+                    val existingRelation = sentenceIdiomRepository.findBySentenceIdAndIdiomId(sentenceId, idiomEntity.id)
+                    if (existingRelation == null) {
+                        // 文とイディオムの関連を保存
+                        val sentenceIdiom = SentenceIdiomEntity(
+                            id = UUID.randomUUID().toString(),
+                            sentenceId = sentenceId,
+                            idiomId = idiomEntity.id,
+                            createdAt = LocalDateTime.now()
+                        )
+                        sentenceIdiomRepository.save(sentenceIdiom)
+                        idiomCount++
+                        logger.debug("センテンスとイディオムの関連付けを保存しました: '${idiomInfo.idiom}'")
+                    } else {
+                        logger.debug("センテンスとイディオムの関連付けは既に存在します: '${idiomInfo.idiom}'")
+                    }
+                } catch (e: Exception) {
+                    logger.error("イディオム処理中にエラーが発生しました: ${e.message}", e)
+                }
+            }
+            logger.info("処理したイディオム数: $idiomCount")
+            
+            // 分析結果から文法を処理
+            var grammarCount = 0
+            analysisResult.grammars.forEach { grammarInfo: SentenceAnalysisResponse.GrammarInfo ->
+                try {
+                    logger.debug("文法処理: '${grammarInfo.pattern}'")
+                    // 文法を検索または新規作成
+                    val grammarEntity = grammarRepository.findByPattern(grammarInfo.pattern) ?: run {
+                        // 新しい文法を保存
+                        val level = when (grammarInfo.level.uppercase()) {
+                            "BEGINNER" -> GrammarLevelEntity.beginner
+                            "ADVANCED" -> GrammarLevelEntity.advanced
+                            else -> GrammarLevelEntity.intermediate
+                        }
+                        
+                        val newGrammar = GrammarEntity(
+                            id = UUID.randomUUID().toString(),
+                            pattern = grammarInfo.pattern,
+                            explanation = grammarInfo.explanation,
+                            level = level,
+                            createdAt = LocalDateTime.now(),
+                            updatedAt = LocalDateTime.now()
+                        )
+                        logger.info("新しい文法を保存します: '${grammarInfo.pattern}'")
+                        grammarRepository.save(newGrammar)
+                    }
+                    
+                    // 既存の関連を確認
+                    val existingRelation = sentenceGrammarRepository.findBySentenceIdAndGrammarId(sentenceId, grammarEntity.id)
+                    if (existingRelation == null) {
+                        // 文と文法の関連を保存
+                        val sentenceGrammar = SentenceGrammarEntity(
+                            id = UUID.randomUUID().toString(),
+                            sentenceId = sentenceId,
+                            grammarId = grammarEntity.id,
+                            createdAt = LocalDateTime.now()
+                        )
+                        sentenceGrammarRepository.save(sentenceGrammar)
+                        grammarCount++
+                        logger.debug("センテンスと文法の関連付けを保存しました: '${grammarInfo.pattern}'")
+                    } else {
+                        logger.debug("センテンスと文法の関連付けは既に存在します: '${grammarInfo.pattern}'")
+                    }
+                } catch (e: Exception) {
+                    logger.error("文法処理中にエラーが発生しました: ${e.message}", e)
+                }
+            }
+            logger.info("処理した文法数: $grammarCount")
+            
+            // 文を分析済みに更新
+            sentenceEntity.isAnalyzed = true
+            sentenceEntity.updatedAt = LocalDateTime.now()
+            sentenceRepository.save(sentenceEntity)
+            logger.info("センテンスを分析済みに更新しました: ${sentenceId}")
+            
+            // ジョブを完了状態に更新
+            job.status = JobStatusEntity.completed
+            job.updatedAt = LocalDateTime.now()
+            jobRepository.save(job)
+            
+            logger.info("文分析ジョブ ${job.id} の処理が完了しました。イディオム: ${idiomCount}件, 文法: ${grammarCount}件")
+        } catch (e: Exception) {
+            logger.error("文分析ジョブ ${job.id} の処理中にエラーが発生しました: ${e.message}", e)
+            handleJobError(job, e)
+        }
     }
     
     /**

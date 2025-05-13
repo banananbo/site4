@@ -1,51 +1,31 @@
 package com.example.api.controller
 
 import com.example.api.model.Sentence
-import com.example.api.model.Idiom
-import com.example.api.model.Grammar
 import com.example.api.service.SentenceService
+import com.example.api.service.UserService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import java.time.format.DateTimeFormatter
+import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.security.oauth2.jwt.Jwt
+import java.security.Principal
 import java.util.NoSuchElementException
 
-data class SentenceRequest(
-    val sentence: String,
-    val translation: String,
-    val source: String? = null,
-    val idioms: List<IdiomRequest>? = null,
-    val grammars: List<GrammarRequest>? = null
-)
-
-data class IdiomRequest(
+data class IdiomResponse(
+    val id: String,
     val idiom: String,
     val meaning: String,
-    val example: String? = null
-)
-
-data class GrammarRequest(
-    val pattern: String,
-    val explanation: String,
-    val level: String = "INTERMEDIATE"
+    val example: String?
 )
 
 data class GrammarResponse(
     val id: String,
     val pattern: String,
     val explanation: String,
-    val level: String,
-    val createdAt: String,
-    val updatedAt: String
-)
-
-data class IdiomResponse(
-    val id: String,
-    val idiom: String,
-    val meaning: String,
-    val example: String?,
-    val createdAt: String,
-    val updatedAt: String
+    val level: String
 )
 
 data class SentenceDetailResponse(
@@ -55,43 +35,38 @@ data class SentenceDetailResponse(
     val source: String?,
     val difficulty: String,
     val isAnalyzed: Boolean,
-    val idioms: List<IdiomResponse>? = null,
-    val grammars: List<GrammarResponse>? = null,
+    val idioms: List<IdiomResponse> = emptyList(),
+    val grammars: List<GrammarResponse> = emptyList(),
     val createdAt: String,
     val updatedAt: String
 ) {
     companion object {
-        fun fromDomain(domain: Sentence): SentenceDetailResponse {
-            val formatter = DateTimeFormatter.ISO_DATE_TIME
+        fun fromSentence(sentence: Sentence): SentenceDetailResponse {
             return SentenceDetailResponse(
-                id = domain.id,
-                sentence = domain.sentence,
-                translation = domain.translation,
-                source = domain.source,
-                difficulty = domain.difficulty.name,
-                isAnalyzed = domain.isAnalyzed,
-                idioms = domain.idioms?.map { idiom ->
+                id = sentence.id,
+                sentence = sentence.sentence,
+                translation = sentence.translation,
+                source = sentence.source,
+                difficulty = sentence.difficulty.name,
+                isAnalyzed = sentence.isAnalyzed,
+                idioms = sentence.idioms?.map { 
                     IdiomResponse(
-                        id = idiom.id,
-                        idiom = idiom.idiom,
-                        meaning = idiom.meaning,
-                        example = idiom.example,
-                        createdAt = formatter.format(idiom.createdAt),
-                        updatedAt = formatter.format(idiom.updatedAt)
+                        id = it.id,
+                        idiom = it.idiom,
+                        meaning = it.meaning,
+                        example = it.example
                     )
-                },
-                grammars = domain.grammars?.map { grammar ->
+                } ?: emptyList(),
+                grammars = sentence.grammars?.map { 
                     GrammarResponse(
-                        id = grammar.id,
-                        pattern = grammar.pattern,
-                        explanation = grammar.explanation,
-                        level = grammar.level.name,
-                        createdAt = formatter.format(grammar.createdAt),
-                        updatedAt = formatter.format(grammar.updatedAt)
+                        id = it.id,
+                        pattern = it.pattern,
+                        explanation = it.explanation,
+                        level = it.level.name
                     )
-                },
-                createdAt = formatter.format(domain.createdAt),
-                updatedAt = formatter.format(domain.updatedAt)
+                } ?: emptyList(),
+                createdAt = sentence.createdAt.toString(),
+                updatedAt = sentence.updatedAt.toString()
             )
         }
     }
@@ -99,55 +74,108 @@ data class SentenceDetailResponse(
 
 @RestController
 @RequestMapping("/api/sentences")
-class SentenceController(private val sentenceService: SentenceService) {
-
-    @PostMapping
-    fun createSentence(@RequestBody request: SentenceRequest): ResponseEntity<SentenceDetailResponse> {
-        val idioms = request.idioms?.map { 
-            Idiom(
-                idiom = it.idiom,
-                meaning = it.meaning,
-                example = it.example
-            )
+class SentenceController(
+    private val sentenceService: SentenceService,
+    private val userService: UserService
+) {
+    /**
+     * ユーザーのセンテンス一覧を取得
+     */
+    @GetMapping
+    fun getUserSentences(
+        principal: Principal,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(defaultValue = "createdAt") sortBy: String,
+        @RequestParam(defaultValue = "desc") sortDirection: String
+    ): ResponseEntity<List<SentenceDetailResponse>> {
+        try {
+            // ユーザーを特定
+            val user = userService.findUserByAuth0Id(principal.name)
+                .orElse(null) ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+            
+            // ソート方向を決定
+            val direction = if (sortDirection.equals("asc", ignoreCase = true)) {
+                Sort.Direction.ASC
+            } else {
+                Sort.Direction.DESC
+            }
+            
+            // ページングを設定
+            val pageable = PageRequest.of(page, size, Sort.by(direction, sortBy))
+            
+            // ユーザーに関連するセンテンスを取得
+            val sentences = sentenceService.getSentencesByUserId(user.id, pageable)
+            
+            // レスポンスを作成
+            val response = sentences.map { sentence ->
+                SentenceDetailResponse.fromSentence(sentence)
+            }
+            
+            return ResponseEntity.ok(response)
+        } catch (e: NoSuchElementException) {
+            return ResponseEntity.notFound().build()
+        } catch (e: Exception) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
         }
-        
-        val grammars = request.grammars?.map {
-            Grammar(
-                pattern = it.pattern,
-                explanation = it.explanation,
-                level = when (it.level.uppercase()) {
-                    "BEGINNER" -> com.example.api.model.GrammarLevel.BEGINNER
-                    "ADVANCED" -> com.example.api.model.GrammarLevel.ADVANCED
-                    else -> com.example.api.model.GrammarLevel.INTERMEDIATE
-                }
-            )
-        }
-        
-        val sentence = Sentence(
-            sentence = request.sentence,
-            translation = request.translation,
-            source = request.source,
-            idioms = idioms,
-            grammars = grammars
-        )
-        
-        val result = sentenceService.registerSentence(sentence)
-        return ResponseEntity.status(HttpStatus.CREATED).body(SentenceDetailResponse.fromDomain(result))
     }
-    
+
+    /**
+     * センテンスの詳細情報を取得
+     */
     @GetMapping("/{id}")
-    fun getSentence(@PathVariable id: String): ResponseEntity<SentenceDetailResponse> {
+    fun getSentenceById(@PathVariable id: String): ResponseEntity<SentenceDetailResponse> {
         return try {
             val sentence = sentenceService.getSentenceById(id)
-            ResponseEntity.ok(SentenceDetailResponse.fromDomain(sentence))
+            ResponseEntity.ok(SentenceDetailResponse.fromSentence(sentence))
         } catch (e: NoSuchElementException) {
             ResponseEntity.notFound().build()
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
         }
     }
-    
-    @GetMapping
-    fun getAllSentences(): ResponseEntity<List<SentenceDetailResponse>> {
-        val sentences = sentenceService.getAllSentences()
-        return ResponseEntity.ok(sentences.map { SentenceDetailResponse.fromDomain(it) })
+
+    /**
+     * センテンスをユーザーに追加
+     */
+    @PostMapping("/{id}/add")
+    fun addSentenceToUser(
+        principal: Principal,
+        @PathVariable id: String
+    ): ResponseEntity<Map<String, Boolean>> {
+        try {
+            // ユーザーを特定
+            val user = userService.findUserByAuth0Id(principal.name)
+                .orElse(null) ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+            
+            val success = sentenceService.addSentenceToUser(user.id, id)
+            return ResponseEntity.ok(mapOf("success" to success))
+        } catch (e: NoSuchElementException) {
+            return ResponseEntity.notFound().build()
+        } catch (e: Exception) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
+        }
+    }
+
+    /**
+     * センテンスをユーザーから削除
+     */
+    @DeleteMapping("/{id}/remove")
+    fun removeSentenceFromUser(
+        principal: Principal,
+        @PathVariable id: String
+    ): ResponseEntity<Map<String, Boolean>> {
+        try {
+            // ユーザーを特定
+            val user = userService.findUserByAuth0Id(principal.name)
+                .orElse(null) ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+            
+            val success = sentenceService.removeSentenceFromUser(user.id, id)
+            return ResponseEntity.ok(mapOf("success" to success))
+        } catch (e: NoSuchElementException) {
+            return ResponseEntity.notFound().build()
+        } catch (e: Exception) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
+        }
     }
 } 

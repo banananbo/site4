@@ -8,4 +8,5 @@ import org.springframework.stereotype.Repository
 interface SentenceGrammarRepository : JpaRepository<SentenceGrammarEntity, String> {
     fun findBySentenceId(sentenceId: String): List<SentenceGrammarEntity>
     fun findByGrammarId(grammarId: String): List<SentenceGrammarEntity>
+    fun findBySentenceIdAndGrammarId(sentenceId: String, grammarId: String): SentenceGrammarEntity?
 } 

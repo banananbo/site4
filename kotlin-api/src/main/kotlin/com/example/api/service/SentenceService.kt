@@ -5,20 +5,31 @@ import com.example.api.entity.SentenceIdiomEntity
 import com.example.api.entity.SentenceGrammarEntity
 import com.example.api.entity.IdiomEntity
 import com.example.api.entity.GrammarEntity
+import com.example.api.entity.ProcessingJobEntity
+import com.example.api.entity.JobStatusEntity
+import com.example.api.entity.JobTypeEntity
+import com.example.api.entity.UserSentenceEntity
+import com.example.api.entity.LearningStatusEntity
 import com.example.api.model.Sentence
 import com.example.api.model.Idiom
 import com.example.api.model.Grammar
+import com.example.api.model.UserSentence
+import com.example.api.model.LearningStatus
 import com.example.api.repository.SentenceRepository
 import com.example.api.repository.IdiomRepository
 import com.example.api.repository.GrammarRepository
 import com.example.api.repository.SentenceIdiomRepository
 import com.example.api.repository.SentenceGrammarRepository
+import com.example.api.repository.JobRepository
+import com.example.api.repository.UserSentenceRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.data.domain.Pageable
 import java.time.LocalDateTime
 import java.util.UUID
 import java.util.NoSuchElementException
 import org.slf4j.LoggerFactory
+import com.fasterxml.jackson.databind.ObjectMapper
 
 @Service
 class SentenceService(
@@ -26,7 +37,10 @@ class SentenceService(
     private val idiomRepository: IdiomRepository,
     private val grammarRepository: GrammarRepository,
     private val sentenceIdiomRepository: SentenceIdiomRepository,
-    private val sentenceGrammarRepository: SentenceGrammarRepository
+    private val sentenceGrammarRepository: SentenceGrammarRepository,
+    private val jobRepository: JobRepository,
+    private val userSentenceRepository: UserSentenceRepository,
+    private val objectMapper: ObjectMapper
 ) {
     private val logger = LoggerFactory.getLogger(SentenceService::class.java)
 
@@ -34,11 +48,21 @@ class SentenceService(
      * 文を登録する
      */
     @Transactional
-    fun registerSentence(sentence: Sentence): Sentence {
+    fun registerSentence(sentence: Sentence, userId: Long? = null): Sentence {
         // 既存の文を検索
         val existingSentence = sentenceRepository.findBySentence(sentence.sentence)
         if (existingSentence != null) {
             logger.info("文が既に存在します: ${sentence.sentence}")
+            // 既存の文が分析されていない場合は分析ジョブを作成
+            if (!existingSentence.isAnalyzed) {
+                createSentenceAnalysisJob(existingSentence.toDomain())
+            }
+
+            // ユーザーIDが指定されていれば、ユーザーとセンテンスの関連付けを作成
+            if (userId != null) {
+                createUserSentenceRelation(userId, existingSentence.id)
+            }
+
             return existingSentence.toDomain()
         }
 
@@ -46,6 +70,11 @@ class SentenceService(
         val sentenceEntity = SentenceEntity.fromDomain(sentence)
         val savedSentence = sentenceRepository.save(sentenceEntity)
         logger.info("新しい文を登録しました: ${sentence.sentence}")
+
+        // ユーザーIDが指定されていれば、ユーザーとセンテンスの関連付けを作成
+        if (userId != null) {
+            createUserSentenceRelation(userId, savedSentence.id)
+        }
 
         // イディオムを処理（存在する場合）
         sentence.idioms?.forEach { idiom ->
@@ -89,7 +118,45 @@ class SentenceService(
             sentenceGrammarRepository.save(sentenceGrammar)
         }
 
+        // 文の分析ジョブを作成（イディオムと文法が事前に指定されていない場合）
+        if ((sentence.idioms == null || sentence.idioms.isEmpty()) && 
+            (sentence.grammars == null || sentence.grammars.isEmpty())) {
+            createSentenceAnalysisJob(savedSentence.toDomain())
+        }
+
         return getSentenceById(savedSentence.id)
+    }
+
+    /**
+     * ユーザーとセンテンスの関連付けを作成する
+     */
+    private fun createUserSentenceRelation(userId: Long?, sentenceId: String) {
+        // ユーザーIDがnullの場合は何もしない
+        if (userId == null) {
+            return
+        }
+        
+        // 既存の関連付けを確認
+        val existingRelation = userSentenceRepository.findByUserIdAndSentenceId(userId, sentenceId)
+        
+        if (existingRelation == null) {
+            // 新しい関連付けを作成
+            val now = LocalDateTime.now()
+            val userSentence = UserSentence(
+                userId = userId,
+                sentenceId = sentenceId,
+                learningStatus = LearningStatus.NEW,
+                isFavorite = false,
+                lastReviewedAt = null,
+                createdAt = now,
+                updatedAt = now
+            )
+            
+            userSentenceRepository.save(UserSentenceEntity.fromDomain(userSentence))
+            logger.info("ユーザー(ID: $userId)とセンテンス(ID: $sentenceId)の関連付けを作成しました")
+        } else {
+            logger.info("ユーザー(ID: $userId)とセンテンス(ID: $sentenceId)の関連付けは既に存在します")
+        }
     }
 
     /**
@@ -120,6 +187,38 @@ class SentenceService(
     }
 
     /**
+     * ユーザーIDに基づいてセンテンスリストを取得する
+     */
+    @Transactional(readOnly = true)
+    fun getSentencesByUserId(userId: Long?, pageable: Pageable): List<Sentence> {
+        // ユーザーIDがnullの場合は空リストを返す
+        if (userId == null) {
+            return emptyList()
+        }
+        
+        // user_sentencesテーブルからユーザーに関連付けられたセンテンスIDを取得
+        val userSentences = userSentenceRepository.findByUserId(userId, pageable).content
+        
+        // センテンスIDのリストを作成
+        val sentenceIds = userSentences.map { it.sentenceId }
+        
+        // センテンスIDに基づいてセンテンスを取得
+        return sentenceRepository.findAllById(sentenceIds)
+            .map { entity ->
+                val idioms = sentenceIdiomRepository.findBySentenceId(entity.id)
+                    .mapNotNull { idiomRepository.findById(it.idiomId).orElse(null)?.toDomain() }
+
+                val grammars = sentenceGrammarRepository.findBySentenceId(entity.id)
+                    .mapNotNull { grammarRepository.findById(it.grammarId).orElse(null)?.toDomain() }
+
+                entity.toDomain().copy(
+                    idioms = idioms,
+                    grammars = grammars
+                )
+            }
+    }
+
+    /**
      * すべての文を取得
      */
     @Transactional(readOnly = true)
@@ -136,5 +235,81 @@ class SentenceService(
                 grammars = grammars
             )
         }
+    }
+
+    /**
+     * 文の分析ジョブを作成する
+     */
+    private fun createSentenceAnalysisJob(sentence: Sentence) {
+        // 文分析ジョブのペイロードを作成
+        val payload = mapOf(
+            "sentence_id" to sentence.id,
+            "sentence" to sentence.sentence,
+            "translation" to sentence.translation
+        )
+        
+        // 文分析ジョブを作成
+        val processingJob = ProcessingJobEntity(
+            id = UUID.randomUUID().toString(),
+            jobType = JobTypeEntity.sentence_analysis,
+            payload = objectMapper.writeValueAsString(payload),
+            status = JobStatusEntity.pending,
+            retryCount = 0,
+            nextRetryAt = null,
+            createdAt = LocalDateTime.now(),
+            updatedAt = LocalDateTime.now()
+        )
+        
+        // ジョブを保存
+        jobRepository.save(processingJob)
+        logger.info("文分析ジョブを作成しました: ${sentence.id} (${sentence.sentence})")
+    }
+
+    /**
+     * ユーザーにセンテンスを関連付ける
+     * @return 成功した場合はtrue、既に関連付けが存在する場合はfalse
+     */
+    @Transactional
+    fun addSentenceToUser(userId: Long?, sentenceId: String): Boolean {
+        // ユーザーIDがnullの場合は失敗
+        if (userId == null) {
+            return false
+        }
+        
+        // 既存の関連付けを確認
+        val existingRelation = userSentenceRepository.findByUserIdAndSentenceId(userId, sentenceId)
+        if (existingRelation != null) {
+            // 既に関連付けが存在する場合
+            return false
+        }
+
+        // センテンスの存在を確認
+        val sentenceEntity = sentenceRepository.findById(sentenceId)
+            .orElseThrow { NoSuchElementException("センテンスが見つかりません: $sentenceId") }
+
+        // 新しい関連付けを作成
+        createUserSentenceRelation(userId, sentenceId)
+        return true
+    }
+
+    /**
+     * ユーザーからセンテンスの関連付けを削除する
+     * @return 成功した場合はtrue、関連付けが存在しない場合はfalse
+     */
+    @Transactional
+    fun removeSentenceFromUser(userId: Long?, sentenceId: String): Boolean {
+        // ユーザーIDがnullの場合は失敗
+        if (userId == null) {
+            return false
+        }
+        
+        // 既存の関連付けを確認
+        val existingRelation = userSentenceRepository.findByUserIdAndSentenceId(userId, sentenceId)
+            ?: return false // 関連付けが存在しない場合
+
+        // 関連付けを削除
+        userSentenceRepository.delete(existingRelation)
+        logger.info("ユーザー(ID: $userId)とセンテンス(ID: $sentenceId)の関連付けを削除しました")
+        return true
     }
 } 

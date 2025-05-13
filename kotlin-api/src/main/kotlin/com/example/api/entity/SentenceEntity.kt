@@ -29,7 +29,7 @@ data class SentenceEntity(
     val difficulty: SentenceDifficultyEntity = SentenceDifficultyEntity.medium,
     
     @Column(name = "is_analyzed")
-    val isAnalyzed: Boolean = false,
+    var isAnalyzed: Boolean = false,
     
     @Column(name = "created_at", nullable = false)
     val createdAt: LocalDateTime,
