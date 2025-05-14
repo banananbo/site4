@@ -1,0 +1,26 @@
+.conversation-create-form {
+  margin-bottom: 24px;
+  padding: 16px;
+}
+.conversation-create-form .form-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.conversation-create-form input,
+.conversation-create-form select {
+  padding: 6px 8px;
+  font-size: 1rem;
+}
+.conversation-create-form button {
+  padding: 6px 16px;
+  font-size: 1rem;
+}
+.success-message {
+  color: #2e7d32;
+  margin-top: 8px;
+}
+.error-message {
+  color: #c62828;
+  margin-top: 8px;
+} 

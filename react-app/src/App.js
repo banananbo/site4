@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Callback from './pages/Callback';
 import Dashboard from './pages/Dashboard';
 import WordManagement from './pages/WordManagement';
+import ConversationPage from './pages/ConversationPage';
 import './App.css';
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
                 </PrivateRoute>
               }
             />
+            <Route path="/conversation" element={<ConversationPage />} />
             <Route path="/" element={<Navigate to="/login" replace />} />
           </Routes>
         </Layout>

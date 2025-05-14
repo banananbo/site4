@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.*
 import java.time.LocalDateTime
 import java.util.UUID
 import java.util.NoSuchElementException
+import java.security.Principal
+import com.example.api.util.AuthUtils
+import com.example.api.service.UserService
 
 @RestController
 @RequestMapping("/api/jobs")
@@ -22,7 +25,8 @@ class JobController(
     private val jobRepository: JobRepository,
     private val jobService: JobService,
     private val sentenceRepository: SentenceRepository,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val userService: UserService
 ) {
 
     /**
@@ -168,4 +172,45 @@ class JobController(
             ))
         }
     }
-} 
+
+    /**
+     * 会話生成ジョブを登録する
+     */
+    @PostMapping("/conversation-generation")
+    fun createConversationGenerationJob(
+        principal: Principal?,
+        @RequestBody request: ConversationGenerationJobRequest
+    ): ResponseEntity<Map<String, Any>> {
+        val userId = AuthUtils.getUserIdFromPrincipal(principal, userService)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(mapOf("error" to "有効なユーザー情報を取得できませんでした"))
+        val now = LocalDateTime.now()
+        val jobId = UUID.randomUUID().toString()
+        val payload = mapOf(
+            "user_id" to userId.toString(),
+            "situation" to request.situation,
+            "level" to request.level
+        )
+        val job = ProcessingJobEntity(
+            id = jobId,
+            jobType = JobTypeEntity.valueOf("conversation_generation"),
+            payload = objectMapper.writeValueAsString(payload),
+            status = JobStatusEntity.pending,
+            retryCount = 0,
+            nextRetryAt = null,
+            createdAt = now,
+            updatedAt = now
+        )
+        jobRepository.save(job)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf(
+            "message" to "会話生成ジョブを登録しました",
+            "job_id" to jobId
+        ))
+    }
+}
+
+// --- リクエストDTO ---
+data class ConversationGenerationJobRequest(
+    val situation: String,
+    val level: Int? = null
+) 

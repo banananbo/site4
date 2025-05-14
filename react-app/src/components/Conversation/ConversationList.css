@@ -1,0 +1,23 @@
+.conversation-list {
+  margin-top: 24px;
+  padding: 16px;
+}
+.conversation-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.conversation-table th, .conversation-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+.conversation-table th {
+  background: #f5f5f5;
+}
+.conversation-table tr:nth-child(even) {
+  background: #fafafa;
+}
+.error-message {
+  color: #c62828;
+  margin-top: 8px;
+} 

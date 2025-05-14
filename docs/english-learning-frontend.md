@@ -108,6 +108,52 @@ react-app/
 └──────────┴───────────────────────────────────────────────┘
 ```
 
+## 会話タブ UI設計
+
+### 概要
+- 新しいタブ「会話」を追加
+- 上部：会話作成フォーム（シチュエーション・レベル入力→/api/jobs/conversation-generation呼び出し）
+- 下部：ユーザーと関連する会話一覧（進捗・タイトル・詳細リンク等）
+
+### 画面ワイヤーフレーム案
+
+```
+┌──────────────────────────────────────────────┐
+│ [タブ] 単語 | センテンス | 会話                │
+├──────────────────────────────────────────────┤
+│ [会話作成フォーム]                           │
+│ ┌─────────────┬─────────────┐               │
+│ │ シチュエーション入力 │ レベル選択      │ [作成] │
+│ └─────────────┴─────────────┘               │
+│ [作成結果メッセージ/エラー表示]              │
+├──────────────────────────────────────────────┤
+│ [ユーザーの会話一覧]                         │
+│ ┌───────────────┬──────┬──────┬──────┐ │
+│ │ タイトル         │ レベル │ 進捗 │ 詳細 │ │
+│ ├───────────────┼──────┼──────┼──────┤ │
+│ │ At the Restaurant │ 2    │ 学習中 │ [詳細]│ │
+│ │ ...               │ ...  │ ...  │ ...  │ │
+│ └───────────────┴──────┴──────┴──────┘ │
+└──────────────────────────────────────────────┘
+```
+
+### 会話作成フォーム
+- シチュエーション（テキスト入力, 必須）
+- レベル（セレクトボックス, 任意）
+- [作成]ボタン押下で `/api/jobs/conversation-generation` にPOST
+- 成功時はメッセージ表示、失敗時はエラー表示
+
+### 会話一覧
+- ユーザーと関連する会話（user_conversations）を一覧表示
+- タイトル、レベル、進捗（new/learning/completed）、詳細ボタン
+- 詳細ボタンで会話詳細画面へ遷移
+
+### 実装コンポーネント例
+- `ConversationTab.js`（タブ全体）
+- `ConversationCreateForm.js`（会話作成フォーム）
+- `ConversationList.js`（会話一覧）
+- `ConversationDetail.js`（詳細画面）
+
 ## コンポーネント詳細
 
 ### WordForm.js
@@ -237,138 +283,3 @@ const WordList = () => {
 
 export default WordList;
 ```
-
-### WordContext.js
-
-```jsx
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { addNewWord, fetchWordsList, fetchWordDetails } from '../api/wordApi';
-
-const WordContext = createContext();
-
-export const WordProvider = ({ children }) => {
-  const [words, setWords] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [totalWords, setTotalWords] = useState(0);
-
-  const fetchWords = useCallback(async ({ page = 1, limit = 10, status = null }) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetchWordsList({ page, limit, status });
-      setWords(response.words);
-      setTotalWords(response.total);
-    } catch (err) {
-      setError('単語一覧の取得に失敗しました');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const addWord = useCallback(async (word) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const newWord = await addNewWord(word);
-      setWords(prevWords => [newWord, ...prevWords]);
-      return newWord;
-    } catch (err) {
-      setError('単語の登録に失敗しました');
-      console.error(err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const value = {
-    words,
-    loading,
-    error,
-    totalWords,
-    fetchWords,
-    addWord,
-  };
-
-  return <WordContext.Provider value={value}>{children}</WordContext.Provider>;
-};
-
-export const useWordContext = () => {
-  const context = useContext(WordContext);
-  if (!context) {
-    throw new Error('useWordContext must be used within a WordProvider');
-  }
-  return context;
-};
-```
-
-## RESTful API インターフェース
-
-```javascript
-// src/api/wordApi.js
-
-import { useAuth } from '../contexts/AuthContext';
-
-const API_URL = process.env.REACT_APP_API_URL;
-
-export const addNewWord = async (word) => {
-  const { token } = useAuth();
-  
-  const response = await fetch(`${API_URL}/api/words`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify({ word })
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || '単語の登録に失敗しました');
-  }
-  
-  return await response.json();
-};
-
-export const fetchWordsList = async ({ page = 1, limit = 10, status = null }) => {
-  const { token } = useAuth();
-  
-  let url = `${API_URL}/api/words?page=${page}&limit=${limit}`;
-  if (status) {
-    url += `&status=${status}`;
-  }
-  
-  const response = await fetch(url, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || '単語一覧の取得に失敗しました');
-  }
-  
-  return await response.json();
-};
-
-export const fetchWordDetails = async (wordId) => {
-  const { token } = useAuth();
-  
-  const response = await fetch(`${API_URL}/api/words/${wordId}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || '単語詳細の取得に失敗しました');
-  }
-  
-  return await response.json();
-};
-``` 

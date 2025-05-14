@@ -361,7 +361,6 @@ class SentenceService(
             )
             
             userSentenceRepository.save(newUserSentence)
-            logger.info("ユーザー(ID: $userId)とセンテンス(ID: $sentenceId)の関連を作成し、学習状態を${learningStatus}に設定しました")
         } else {
             // 既存の関連を更新
             // UserSentenceEntityのlearningStatusがvalで定義されているため、新しいインスタンスを作成して置き換え
@@ -381,13 +380,8 @@ class SentenceService(
                 createdAt = userSentenceEntity.createdAt,
                 updatedAt = LocalDateTime.now()
             )
-
-            logger.info("--------------------------------")
-            logger.info("updatedUserSentence.learningStatus: ${updatedUserSentence.learningStatus}")
-            logger.info("--------------------------------")
             
             userSentenceRepository.save(updatedUserSentence)
-            logger.info("ユーザー(ID: $userId)のセンテンス(ID: $sentenceId)の学習状態を${learningStatus}に更新しました")
         }
         
         // センテンスの詳細情報を取得して返す

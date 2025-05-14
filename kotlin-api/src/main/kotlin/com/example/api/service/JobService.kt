@@ -84,6 +84,7 @@ class JobService(
                     JobTypeEntity.batch_translation -> processBatchTranslationJob(job)
                     JobTypeEntity.learning_reminder -> processLearningReminderJob(job)
                     JobTypeEntity.sentence_analysis -> processSentenceAnalysisJob(job)
+                    JobTypeEntity.conversation_generation -> processConversationGenerationJob(job)
                 }
             } catch (e: Exception) {
                 handleJobError(job, e)
@@ -341,6 +342,18 @@ class JobService(
             logger.error("文分析ジョブ ${job.id} の処理中にエラーが発生しました: ${e.message}", e)
             handleJobError(job, e)
         }
+    }
+    
+    /**
+     * 会話生成ジョブを処理する
+     */
+    @Transactional
+    fun processConversationGenerationJob(job: ProcessingJobEntity) {
+        // TODO: 会話生成ジョブの処理をここに実装
+        logger.info("会話生成ジョブ ${job.id} の処理は現在未実装です")
+        job.status = JobStatusEntity.completed
+        job.updatedAt = LocalDateTime.now()
+        jobRepository.save(job)
     }
     
     /**

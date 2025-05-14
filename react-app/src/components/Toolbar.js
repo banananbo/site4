@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import './Toolbar.css';
+import { Link } from 'react-router-dom';
 
 const Toolbar = ({ onMenuClick }) => {
   const { isAuthenticated, logout } = useAuth();
@@ -25,6 +26,11 @@ const Toolbar = ({ onMenuClick }) => {
           </button>
         )}
       </div>
+      <nav className="toolbar-nav">
+        <Link to="/dashboard">ダッシュボード</Link>
+        <Link to="/words">単語</Link>
+        <Link to="/conversation">会話</Link>
+      </nav>
     </div>
   );
 };

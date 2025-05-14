@@ -9,7 +9,7 @@ enum class JobStatusEntity {
 }
 
 enum class JobTypeEntity {
-    word_processing, batch_translation, learning_reminder, sentence_analysis
+    word_processing, batch_translation, learning_reminder, sentence_analysis, conversation_generation
 }
 
 @Entity
@@ -52,6 +52,7 @@ data class ProcessingJobEntity(
                 JobTypeEntity.batch_translation -> com.example.api.model.JobType.BATCH_TRANSLATION
                 JobTypeEntity.learning_reminder -> com.example.api.model.JobType.LEARNING_REMINDER
                 JobTypeEntity.sentence_analysis -> com.example.api.model.JobType.SENTENCE_ANALYSIS
+                JobTypeEntity.conversation_generation -> com.example.api.model.JobType.CONVERSATION_GENERATION
             },
             payload = payload,
             status = when(status) {
@@ -77,6 +78,7 @@ data class ProcessingJobEntity(
                     com.example.api.model.JobType.BATCH_TRANSLATION -> JobTypeEntity.batch_translation
                     com.example.api.model.JobType.LEARNING_REMINDER -> JobTypeEntity.learning_reminder
                     com.example.api.model.JobType.SENTENCE_ANALYSIS -> JobTypeEntity.sentence_analysis
+                    com.example.api.model.JobType.CONVERSATION_GENERATION -> JobTypeEntity.conversation_generation
                 },
                 payload = domain.payload,
                 status = when(domain.status) {
