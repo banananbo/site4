@@ -202,6 +202,9 @@ class SentenceService(
         // センテンスIDのリストを作成
         val sentenceIds = userSentences.map { it.sentenceId }
         
+        // ユーザーセンテンスをIDでマップ化して高速アクセスできるようにする
+        val userSentenceMap = userSentences.associateBy { it.sentenceId }
+        
         // センテンスIDに基づいてセンテンスを取得
         return sentenceRepository.findAllById(sentenceIds)
             .map { entity ->
@@ -211,9 +214,20 @@ class SentenceService(
                 val grammars = sentenceGrammarRepository.findBySentenceId(entity.id)
                     .mapNotNull { grammarRepository.findById(it.grammarId).orElse(null)?.toDomain() }
 
+                // ユーザーセンテンス関連から学習ステータスを取得
+                val userSentence = userSentenceMap[entity.id]
+                val learningStatus = userSentence?.learningStatus?.let {
+                    when(it) {
+                        LearningStatusEntity.new -> LearningStatus.NEW
+                        LearningStatusEntity.learning -> LearningStatus.LEARNING
+                        LearningStatusEntity.mastered -> LearningStatus.MASTERED
+                    }
+                }
+
                 entity.toDomain().copy(
                     idioms = idioms,
-                    grammars = grammars
+                    grammars = grammars,
+                    learningStatus = learningStatus
                 )
             }
     }
@@ -367,12 +381,19 @@ class SentenceService(
                 createdAt = userSentenceEntity.createdAt,
                 updatedAt = LocalDateTime.now()
             )
+
+            logger.info("--------------------------------")
+            logger.info("updatedUserSentence.learningStatus: ${updatedUserSentence.learningStatus}")
+            logger.info("--------------------------------")
             
             userSentenceRepository.save(updatedUserSentence)
             logger.info("ユーザー(ID: $userId)のセンテンス(ID: $sentenceId)の学習状態を${learningStatus}に更新しました")
         }
         
         // センテンスの詳細情報を取得して返す
-        return getSentenceById(sentenceId)
+       // return getSentenceById(sentenceId)
+        return sentenceEntity.toDomain().copy(
+            learningStatus = learningStatus
+        )
     }
 } 

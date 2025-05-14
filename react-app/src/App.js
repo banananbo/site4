@@ -7,7 +7,6 @@ import Login from './pages/Login';
 import Callback from './pages/Callback';
 import Dashboard from './pages/Dashboard';
 import WordManagement from './pages/WordManagement';
-import SentenceManagement from './pages/SentenceManagement';
 import './App.css';
 
 function App() {
@@ -31,14 +30,6 @@ function App() {
               element={
                 <PrivateRoute>
                   <WordManagement />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/sentences"
-              element={
-                <PrivateRoute>
-                  <SentenceManagement />
                 </PrivateRoute>
               }
             />

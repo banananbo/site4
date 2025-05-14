@@ -364,6 +364,55 @@ const WordManagement = () => {
     }
   };
 
+    // 学習状態を更新する関数
+    const updateSentenceLearningStatus = async (sentenceId, status) => {
+      if (!user) return;
+      
+      setUpdateStatusLoading(true);
+      try {
+        const token = await getAccessToken();
+        
+        // APIエンドポイントのURL（userIdパラメータを削除）
+        const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/sentences/${sentenceId}/learning-status?status=${status}`;
+        
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || '学習状態の更新に失敗しました');
+        }
+        
+        const updatedSentence = await response.json();
+        
+        // センテンスリストを更新
+        const updatedSentences = sentences.map(sentence => 
+          sentence.id === sentenceId ? { ...sentence, learningStatus: updatedSentence.learningStatus } : sentence
+        );
+        setSentences(updatedSentences);
+
+        console.log('センテンスリスト更新 updatedSentence:', updatedSentence);
+        console.log('センテンスリスト更新 selectedSentence:', selectedSentence);
+        console.log('センテンスリスト更新 sentenceId:', sentenceId);
+        
+        // モーダル内のセンテンスデータを更新
+        if (selectedSentence && selectedSentence.id === sentenceId) {
+          setSelectedSentence({ ...selectedSentence, learningStatus: updatedSentence.learningStatus });
+        }
+        
+      } catch (error) {
+        console.error('学習状態の更新エラー:', error);
+        alert(error.message);
+      } finally {
+        setUpdateStatusLoading(false);
+      }
+    };
+
   // 単語詳細モーダル
   const WordDetailModal = () => {
     if (!selectedWord) return null;
@@ -481,10 +530,13 @@ const WordManagement = () => {
                   <span className="info-label">難易度:</span>
                   <span className="info-value">{selectedSentence.difficulty || 'MEDIUM'}</span>
                 </div>
-                <div className="info-row">
-                  <span className="info-label">分析状態:</span>
-                  <span className="info-value">{selectedSentence.isAnalyzed ? '分析済み' : '分析中'}</span>
-                </div>
+                {activeTab === 'mypage' && (
+                  <LearningStatusSelector 
+                    currentStatus={selectedSentence.learningStatus}
+                    onStatusChange={(status) => updateSentenceLearningStatus(selectedSentence.id, status)}
+                    itemType="word"
+                  />
+                )}
               </div>
               
               {selectedSentence.idioms && selectedSentence.idioms.length > 0 && (

@@ -2,6 +2,7 @@ package com.example.api.model
 
 import java.time.LocalDateTime
 import java.util.UUID
+import com.example.api.model.LearningStatus
 
 enum class SentenceDifficulty {
     EASY, MEDIUM, HARD
@@ -17,6 +18,7 @@ data class Sentence(
     val source: String? = null,
     val difficulty: SentenceDifficulty = SentenceDifficulty.MEDIUM,
     val isAnalyzed: Boolean = false,
+    val learningStatus: LearningStatus? = null,
     val idioms: List<Idiom>? = null,
     val grammars: List<Grammar>? = null,
     val createdAt: LocalDateTime = LocalDateTime.now(),

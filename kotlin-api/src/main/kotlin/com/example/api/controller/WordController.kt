@@ -226,4 +226,6 @@ class WordController(
                 .body(WordRelationResponse(false, "エラーが発生しました: ${e.message}"))
         }
     }
+
+    
 }

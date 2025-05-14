@@ -1,6 +1,7 @@
 package com.example.api.controller
 
 import com.example.api.model.Sentence
+import com.example.api.model.LearningStatus
 import com.example.api.service.SentenceService
 import com.example.api.service.UserService
 import com.example.api.util.AuthUtils
@@ -36,6 +37,7 @@ data class SentenceDetailResponse(
     val source: String?,
     val difficulty: String,
     val isAnalyzed: Boolean,
+    val learningStatus: String? = null,
     val idioms: List<IdiomResponse> = emptyList(),
     val grammars: List<GrammarResponse> = emptyList(),
     val createdAt: String,
@@ -50,6 +52,7 @@ data class SentenceDetailResponse(
                 source = sentence.source,
                 difficulty = sentence.difficulty.name,
                 isAnalyzed = sentence.isAnalyzed,
+                learningStatus = sentence.learningStatus?.name,
                 idioms = sentence.idioms?.map { 
                     IdiomResponse(
                         id = it.id,
