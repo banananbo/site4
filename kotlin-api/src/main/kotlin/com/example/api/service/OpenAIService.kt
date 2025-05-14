@@ -16,6 +16,7 @@ import java.time.Duration
 import java.time.LocalDateTime
 import java.util.UUID
 
+
 @Service
 class OpenAIService(
     private val objectMapper: ObjectMapper,

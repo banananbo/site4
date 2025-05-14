@@ -25,6 +25,7 @@ import com.example.api.repository.SentenceGrammarRepository
 import com.example.api.repository.UserWordRepository
 import com.example.api.repository.UserSentenceRepository
 import com.example.api.entity.LearningStatusEntity
+import com.example.api.repository.ConversationRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -49,7 +50,8 @@ class JobService(
     private val sentenceIdiomRepository: SentenceIdiomRepository,
     private val sentenceGrammarRepository: SentenceGrammarRepository,
     private val userWordRepository: UserWordRepository,
-    private val userSentenceRepository: UserSentenceRepository
+    private val userSentenceRepository: UserSentenceRepository,
+    private val conversationRepository: ConversationRepository
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     
@@ -397,6 +399,9 @@ class JobService(
             now = now
         )
         logger.info("Conversation集約初期化: $conversation")
+
+        // Conversation集約をDBに保存
+        conversationRepository.saveAggregate(conversation)
 
         job.status = JobStatusEntity.completed
         job.updatedAt = LocalDateTime.now()

@@ -21,23 +21,23 @@ CREATE TABLE conversation_lines (
   FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
 
--- conversation_line_words（セリフとWordの関連）
-CREATE TABLE conversation_line_words (
+-- conversation_words（会話とWordの関連）
+CREATE TABLE conversation_words (
   id VARCHAR(36) PRIMARY KEY,
-  conversation_line_id VARCHAR(36) NOT NULL,
+  conversation_id VARCHAR(36) NOT NULL,
   word_id VARCHAR(36) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (conversation_line_id) REFERENCES conversation_lines(id) ON DELETE CASCADE,
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
   FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE
 );
 
--- conversation_line_sentences（セリフとセンテンスの関連）
-CREATE TABLE conversation_line_sentences (
+-- conversation_sentences（会話とSentenceの関連）
+CREATE TABLE conversation_sentences (
   id VARCHAR(36) PRIMARY KEY,
-  conversation_line_id VARCHAR(36) NOT NULL,
+  conversation_id VARCHAR(36) NOT NULL,
   sentence_id VARCHAR(36) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (conversation_line_id) REFERENCES conversation_lines(id) ON DELETE CASCADE,
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
   FOREIGN KEY (sentence_id) REFERENCES sentences(id) ON DELETE CASCADE
 );
 
