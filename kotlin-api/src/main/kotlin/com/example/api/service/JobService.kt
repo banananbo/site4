@@ -22,6 +22,9 @@ import com.example.api.repository.IdiomRepository
 import com.example.api.repository.GrammarRepository
 import com.example.api.repository.SentenceIdiomRepository
 import com.example.api.repository.SentenceGrammarRepository
+import com.example.api.repository.UserWordRepository
+import com.example.api.repository.UserSentenceRepository
+import com.example.api.entity.LearningStatusEntity
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -44,7 +47,9 @@ class JobService(
     private val idiomRepository: IdiomRepository,
     private val grammarRepository: GrammarRepository,
     private val sentenceIdiomRepository: SentenceIdiomRepository,
-    private val sentenceGrammarRepository: SentenceGrammarRepository
+    private val sentenceGrammarRepository: SentenceGrammarRepository,
+    private val userWordRepository: UserWordRepository,
+    private val userSentenceRepository: UserSentenceRepository
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     
@@ -349,8 +354,50 @@ class JobService(
      */
     @Transactional
     fun processConversationGenerationJob(job: ProcessingJobEntity) {
-        // TODO: 会話生成ジョブの処理をここに実装
-        logger.info("会話生成ジョブ ${job.id} の処理は現在未実装です")
+        // ジョブのペイロードから必要な情報を取得
+        val payloadNode = objectMapper.readTree(job.payload)
+        val userId = payloadNode.get("user_id")?.asText()
+        val situation = payloadNode.get("situation")?.asText()
+        val level = payloadNode.get("level")?.asInt()
+
+        logger.info("会話生成ジョブ ${job.id} のpayload: user_id=$userId, situation=$situation, level=$level")
+
+        // 学習中Wordの取得
+        val learningWords = userWordRepository.findAll().filter {
+            it.userId.toString() == userId && it.learningStatus == LearningStatusEntity.learning
+        }
+        logger.info("学習中Word件数: ${learningWords.size}")
+
+        // 学習中センテンスの取得
+        val learningSentences = userSentenceRepository.findAll().filter {
+            it.userId.toString() == userId && it.learningStatus == LearningStatusEntity.learning
+        }
+        logger.info("学習中センテンス件数: ${learningSentences.size}")
+
+        // 実際の単語・センテンスを取得
+        val wordEntities = learningWords.mapNotNull { wordRepository.findById(it.wordId).orElse(null) }
+        val sentenceEntities = learningSentences.mapNotNull { sentenceRepository.findById(it.sentenceId).orElse(null) }
+        val wordList = wordEntities.map { it.word }
+        val sentenceList = sentenceEntities.map { it.sentence }
+
+        // OpenAIで会話生成
+        val conversations = openAIService.generateConversation(userId, situation, level, wordList, sentenceList)
+        logger.info("生成された会話: ${conversations}")
+
+        // Conversation集約の初期化
+        val now = LocalDateTime.now()
+        val conversationId = UUID.randomUUID().toString()
+        val conversation = com.example.api.model.Conversation.fromGenerated(
+            id = conversationId,
+            title = situation,
+            level = level,
+            conversationPairs = conversations,
+            wordEntities = wordEntities,
+            sentenceEntities = sentenceEntities,
+            now = now
+        )
+        logger.info("Conversation集約初期化: $conversation")
+
         job.status = JobStatusEntity.completed
         job.updatedAt = LocalDateTime.now()
         jobRepository.save(job)

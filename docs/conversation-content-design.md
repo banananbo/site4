@@ -197,4 +197,114 @@ sequenceDiagram
 - 会話生成ジョブのpayloadには、ユーザーID・シチュエーション・希望レベル等を含めると柔軟性が高まります。
 - 生成された会話データは、必ずバリデーション（例：セリフ数、空文字チェック等）を行い、品質を担保してください。
 - ジョブの進捗やエラーはユーザーに通知できる仕組みがあるとUXが向上します。
-- 会話生成のOpenAIプロンプトは、用途に応じてテンプレート化・バージョン管理すると運用が楽です。 
+- 会話生成のOpenAIプロンプトは、用途に応じてテンプレート化・バージョン管理すると運用が楽です。
+
+## クラス設計（集約ルート: Conversation）
+
+会話コンテンツは `Conversation` を集約ルートとし、関連するセリフや単語・センテンスとの関連も含めて一括で取得・保存できる形で設計します。
+
+```kotlin
+// Conversation集約のドメインモデル例
+
+data class Conversation(
+    val id: String,
+    val title: String,
+    val description: String?,
+    val level: Int,
+    val lines: List<ConversationLine>,
+    val words: List<WordRef>,        // 追加: 会話全体で使われる単語リスト
+    val sentences: List<SentenceRef>,// 追加: 会話全体で使われる例文リスト
+    val createdAt: LocalDateTime,
+    val updatedAt: LocalDateTime
+)
+
+data class ConversationLine(
+    val id: String,
+    var lineOrder: Int,
+    val speaker: String?,
+    var sentence: String,
+    var translation: String,
+    val createdAt: LocalDateTime,
+    val updatedAt: LocalDateTime
+)
+
+data class WordRef(
+    val id: String,
+    val word: String
+)
+
+data class SentenceRef(
+    val id: String,
+    val sentence: String
+)
+
+// ユーザー進捗も集約で扱う場合
+
+data class UserConversationProgress(
+    val userId: String,
+    val conversationId: String,
+    val status: ConversationLearningStatus, // NEW, LEARNING, COMPLETED
+    val lastAccessedAt: LocalDateTime?,
+    val createdAt: LocalDateTime
+)
+
+enum class ConversationLearningStatus { NEW, LEARNING, COMPLETED }
+```
+
+### 集約の特徴
+- Conversationを起点に、lines（セリフ）、words/sentences（会話全体で使われる単語・例文）を一括で管理
+- Conversation単位で取得・保存・更新が可能
+- APIやサービス層ではこの集約モデルをやり取りすることで、永続化や取得がシンプルになる
+- 進捗管理もUserConversationProgressとして集約に含めることで、ユーザーごとの状態も一元管理できる
+
+## クラス図（Conversation集約）
+
+```mermaid
+classDiagram
+    class Conversation {
+        String id
+        String title
+        String description
+        Int level
+        List~ConversationLine~ lines
+        List~WordRef~ words
+        List~SentenceRef~ sentences
+        LocalDateTime createdAt
+        LocalDateTime updatedAt
+    }
+    class ConversationLine {
+        String id
+        Int lineOrder
+        String speaker
+        String sentence
+        String translation
+        LocalDateTime createdAt
+        LocalDateTime updatedAt
+    }
+    class WordRef {
+        String id
+        String word
+    }
+    class SentenceRef {
+        String id
+        String sentence
+    }
+    class UserConversationProgress {
+        String userId
+        String conversationId
+        ConversationLearningStatus status
+        LocalDateTime lastAccessedAt
+        LocalDateTime createdAt
+    }
+    class ConversationLearningStatus {
+        <<enum>>
+        NEW
+        LEARNING
+        COMPLETED
+    }
+
+    Conversation "1" -- "*" ConversationLine : lines
+    Conversation "1" -- "*" WordRef : words
+    Conversation "1" -- "*" SentenceRef : sentences
+    Conversation "1" -- "*" UserConversationProgress : progress
+``` 
