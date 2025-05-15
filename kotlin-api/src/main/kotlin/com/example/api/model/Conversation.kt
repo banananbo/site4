@@ -37,6 +37,9 @@ data class Conversation(
                 Speaker(
                     id = newId,
                     name = genSpeaker.name,
+                    age = genSpeaker.age,
+                    gender = genSpeaker.gender,
+                    nationality = genSpeaker.nationality,
                     setting = genSpeaker.setting,
                     personality = genSpeaker.personality,
                     image = genSpeaker.image,
@@ -103,6 +106,9 @@ enum class ConversationLearningStatus { NEW, LEARNING, COMPLETED }
 data class Speaker(
     val id: String,
     val name: String,
+    val age: Int?,
+    val gender: String?,
+    val nationality: String?,
     val setting: String?,
     val personality: String?,
     val image: String?,

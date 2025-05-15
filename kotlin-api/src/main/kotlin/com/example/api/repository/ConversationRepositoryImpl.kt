@@ -41,6 +41,9 @@ class ConversationRepositoryImpl(
             SpeakerEntity(
                 id = speaker.id,
                 name = speaker.name,
+                age = speaker.age,
+                gender = speaker.gender,
+                nationality = speaker.nationality,
                 setting = speaker.setting,
                 personality = speaker.personality,
                 image = speaker.image,

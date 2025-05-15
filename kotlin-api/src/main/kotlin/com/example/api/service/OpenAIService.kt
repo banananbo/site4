@@ -322,6 +322,9 @@ class OpenAIService(
     data class GeneratedSpeaker(
         val id: String,
         val name: String,
+        val age: Int?,
+        val gender: String?,
+        val nationality: String?,
         val setting: String?,
         val personality: String?,
         val image: String?
@@ -371,6 +374,9 @@ class OpenAIService(
     {
       "id": "A",
       "name": "Alice",
+      "age": 20,
+      "gender": "female",
+      "nationality": "Japanese",
       "setting": "学生",
       "personality": "明るく前向き",
       "image": ""
@@ -378,6 +384,9 @@ class OpenAIService(
     {
       "id": "B",
       "name": "Bob",
+      "age": 35,
+      "gender": "male",
+      "nationality": "American",
       "setting": "先生",
       "personality": "優しく丁寧",
       "image": ""
@@ -425,6 +434,9 @@ class OpenAIService(
                             GeneratedSpeaker(
                                 id = node.get("id")?.asText() ?: "",
                                 name = node.get("name")?.asText() ?: "",
+                                age = node.get("age")?.asInt(),
+                                gender = node.get("gender")?.asText(),
+                                nationality = node.get("nationality")?.asText(),
                                 setting = node.get("setting")?.asText(),
                                 personality = node.get("personality")?.asText(),
                                 image = node.get("image")?.asText()

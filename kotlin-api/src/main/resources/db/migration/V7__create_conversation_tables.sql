@@ -57,6 +57,9 @@ CREATE TABLE user_conversations (
 CREATE TABLE speakers (
   id VARCHAR(36) PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
+  age INT,
+  gender VARCHAR(20),
+  nationality VARCHAR(100),
   setting TEXT,
   personality TEXT,
   image TEXT,
