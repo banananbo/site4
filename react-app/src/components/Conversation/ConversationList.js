@@ -1,20 +1,28 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
+import { AuthContext } from '../../contexts/AuthContext';
+
+const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/conversations`;
 
 const ConversationList = () => {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { getAccessToken, loading: authLoading } = useContext(AuthContext);
 
   useEffect(() => {
+    if (authLoading) return; // 初期化中は何もしない
+
     const fetchConversations = async () => {
       setLoading(true);
       setError('');
       try {
-        const res = await fetch('/api/user/conversations', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
+        const token = await getAccessToken();
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+        const headers = { 'Authorization': `Bearer ${token}` };
+        const res = await fetch(apiUrl, { headers });
         if (!res.ok) throw new Error('取得に失敗しました');
         const data = await res.json();
         setConversations(data);
@@ -25,7 +33,7 @@ const ConversationList = () => {
       }
     };
     fetchConversations();
-  }, []);
+  }, [getAccessToken, authLoading]);
 
   return (
     <div className="conversation-list card">
@@ -38,19 +46,17 @@ const ConversationList = () => {
             <tr>
               <th>タイトル</th>
               <th>レベル</th>
-              <th>進捗</th>
               <th>詳細</th>
             </tr>
           </thead>
           <tbody>
             {conversations.length === 0 ? (
-              <tr><td colSpan={4}>会話がありません</td></tr>
+              <tr><td colSpan={3}>会話がありません</td></tr>
             ) : (
               conversations.map(conv => (
-                <tr key={conv.conversationId}>
+                <tr key={conv.id}>
                   <td>{conv.title || '-'}</td>
                   <td>{conv.level || '-'}</td>
-                  <td>{conv.status}</td>
                   <td>
                     <button onClick={() => alert('詳細画面へ（未実装）')}>詳細</button>
                   </td>
