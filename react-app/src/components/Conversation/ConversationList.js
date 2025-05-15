@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/conversations`;
 
@@ -8,6 +9,7 @@ const ConversationList = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { getAccessToken, loading: authLoading } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (authLoading) return; // 初期化中は何もしない
@@ -58,7 +60,7 @@ const ConversationList = () => {
                   <td>{conv.title || '-'}</td>
                   <td>{conv.level || '-'}</td>
                   <td>
-                    <button onClick={() => alert('詳細画面へ（未実装）')}>詳細</button>
+                    <button onClick={() => navigate(`/conversations/${conv.id}`)}>詳細</button>
                   </td>
                 </tr>
               ))
