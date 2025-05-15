@@ -383,8 +383,8 @@ class JobService(
         val sentenceList = sentenceEntities.map { it.sentence }
 
         // OpenAIで会話生成
-        val conversations = openAIService.generateConversation(userId, situation, level, wordList, sentenceList)
-        logger.info("生成された会話: ${conversations}")
+        val generatedConversation = openAIService.generateConversation(userId, situation, level, wordList, sentenceList)
+        logger.info("生成された会話: ${generatedConversation}")
 
         // Conversation集約の初期化
         val now = LocalDateTime.now()
@@ -393,7 +393,7 @@ class JobService(
             id = conversationId,
             title = situation,
             level = level,
-            conversationPairs = conversations,
+            generated = generatedConversation,
             wordEntities = wordEntities,
             sentenceEntities = sentenceEntities,
             now = now
@@ -401,7 +401,7 @@ class JobService(
         logger.info("Conversation集約初期化: $conversation")
 
         // Conversation集約をDBに保存
-        conversationRepository.saveAggregate(conversation)
+        conversationRepository.saveAggregate(conversation, userId)
 
         job.status = JobStatusEntity.completed
         job.updatedAt = LocalDateTime.now()

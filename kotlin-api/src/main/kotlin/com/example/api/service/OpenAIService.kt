@@ -319,6 +319,26 @@ class OpenAIService(
         }
     }
 
+    data class GeneratedSpeaker(
+        val id: String,
+        val name: String,
+        val setting: String?,
+        val personality: String?,
+        val image: String?
+    )
+
+    data class GeneratedLine(
+        val speaker: String?,
+        val english: String,
+        val japanese: String
+    )
+
+    data class GeneratedConversation(
+        val description: String?,
+        val speakers: List<GeneratedSpeaker>,
+        val lines: List<GeneratedLine>
+    )
+
     /**
      * 会話生成用のOpenAI呼び出し
      */
@@ -328,18 +348,55 @@ class OpenAIService(
         level: Int?,
         learningWords: List<String>,
         learningSentences: List<String>
-    ): List<Pair<String, String>> {
+    ): GeneratedConversation? {
         val startTime = System.currentTimeMillis()
         val prompt = buildString {
             append("あなたは英語学習アシスタントです。\n")
             append("以下の条件で英会話例を生成してください。ユーザーが学習中の単語を使い、学習中の例文に近い表現を利用して会話をします\n")
-            append("・シチュエーション: ${situation ?: "指定なし"}\n")
-            append("・レベル: ${level ?: "指定なし"}\n")
-            append("・ユーザーが現在学習中の単語: ${learningWords.joinToString(", ")}\n")
-            append("・ユーザーが現在学習中の例文: ${learningSentences.joinToString(", ")}\n")
-            append("---\n")
+            append("・シチュエーション: ")
+            append(situation ?: "指定なし")
+            append("\n・レベル: ")
+            append(level ?: "指定なし")
+            append("\n・ユーザーが現在学習中の単語: ")
+            append(learningWords.joinToString(", "))
+            append("\n・ユーザーが現在学習中の例文: ")
+            append(learningSentences.joinToString(", "))
+            append("\n---\n")
+            append("descriptionには、誰と誰が、いつ、どこで、どのような状況で、どんなことについて会話をしているかを英語で簡潔に記述してください。\n")
             append("出力フォーマットは必ず以下のJSONで返してください。\n")
-            append("{\"description\": \"会話の概要や前提条件（英語）\", \"lines\": [{\"english\": \"英語の会話文\", \"japanese\": \"日本語訳\"}, ...]}\n")
+            append("""
+{
+  "description": "Alice and Bob are talking about their weekend plans at a cafe on Saturday afternoon.",
+  "speakers": [
+    {
+      "id": "A",
+      "name": "Alice",
+      "setting": "学生",
+      "personality": "明るく前向き",
+      "image": ""
+    },
+    {
+      "id": "B",
+      "name": "Bob",
+      "setting": "先生",
+      "personality": "優しく丁寧",
+      "image": ""
+    }
+  ],
+  "lines": [
+    {
+      "speaker": "A",
+      "english": "Hello, how are you?",
+      "japanese": "こんにちは、お元気ですか？"
+    },
+    {
+      "speaker": "B",
+      "english": "I'm fine, thank you. And you?",
+      "japanese": "元気です。あなたは？"
+    }
+  ]
+}
+""")
         }
         try {
             val timeout = Duration.ofSeconds(60)
@@ -357,23 +414,49 @@ class OpenAIService(
             logger.info("OpenAI 会話生成応答: $content")
             // JSON部分を抽出
             val extractedJson = extractJsonFromResponse(content)
-            var description: String? = null
-            val result = mutableListOf<Pair<String, String>>()
             try {
                 val root = objectMapper.readTree(extractedJson)
-                description = root.get("description")?.asText()
+                val description = root.get("description")?.asText()
+                val speakers = mutableListOf<GeneratedSpeaker>()
+                val speakersNode = root.get("speakers")
+                if (speakersNode != null && speakersNode.isArray) {
+                    for (node in speakersNode) {
+                        speakers.add(
+                            GeneratedSpeaker(
+                                id = node.get("id")?.asText() ?: "",
+                                name = node.get("name")?.asText() ?: "",
+                                setting = node.get("setting")?.asText(),
+                                personality = node.get("personality")?.asText(),
+                                image = node.get("image")?.asText()
+                            )
+                        )
+                    }
+                }
+                val lines = mutableListOf<GeneratedLine>()
                 val linesNode = root.get("lines")
                 if (linesNode != null && linesNode.isArray) {
                     for (node in linesNode) {
+                        val speaker = node.get("speaker")?.asText()
                         val english = node.get("english")?.asText() ?: continue
                         val japanese = node.get("japanese")?.asText() ?: ""
-                        result.add(english to japanese)
+                        lines.add(GeneratedLine(speaker, english, japanese))
                     }
                 }
+                // ログ保存
+                val log = OpenAILogEntity(
+                    id = UUID.randomUUID().toString(),
+                    requestPrompt = prompt,
+                    responseContent = content,
+                    tokensUsed = calculateTokens(prompt, content),
+                    requestTimeMs = requestTime.toInt(),
+                    createdAt = LocalDateTime.now()
+                )
+                openAILogRepository.save(log)
+                return GeneratedConversation(description, speakers, lines)
             } catch (e: Exception) {
-                logger.error("会話生成JSONパース失敗: ${e.message}")
+                logger.error("会話生成JSONパース失敗: ", e)
             }
-            // ログ保存
+            // パース失敗時もログ保存
             val log = OpenAILogEntity(
                 id = UUID.randomUUID().toString(),
                 requestPrompt = prompt,
@@ -383,10 +466,10 @@ class OpenAIService(
                 createdAt = LocalDateTime.now()
             )
             openAILogRepository.save(log)
-            return result
+            return null
         } catch (e: Exception) {
             logger.error("OpenAI会話生成呼び出し中にエラー: ${e.message}", e)
-            return emptyList()
+            return null
         }
     }
 } 

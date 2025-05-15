@@ -5,6 +5,10 @@ import com.example.api.entity.ConversationEntity
 import com.example.api.entity.ConversationLineEntity
 import com.example.api.entity.ConversationWordEntity
 import com.example.api.entity.ConversationSentenceEntity
+import com.example.api.entity.SpeakerEntity
+import com.example.api.repository.SpeakerEntityRepository
+import com.example.api.entity.UserConversationEntity
+import com.example.api.repository.UserConversationEntityRepository
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
@@ -14,11 +18,13 @@ class ConversationRepositoryImpl(
     private val conversationEntityRepository: ConversationEntityRepository,
     private val conversationLineEntityRepository: ConversationLineEntityRepository,
     private val conversationWordEntityRepository: ConversationWordEntityRepository,
-    private val conversationSentenceEntityRepository: ConversationSentenceEntityRepository
+    private val conversationSentenceEntityRepository: ConversationSentenceEntityRepository,
+    private val speakerEntityRepository: SpeakerEntityRepository,
+    private val userConversationEntityRepository: UserConversationEntityRepository
 ) : ConversationRepository {
 
     @Transactional
-    override fun saveAggregate(conversation: Conversation) {
+    override fun saveAggregate(conversation: Conversation, userId: String?) {
         // Conversation本体
         val conversationEntity = ConversationEntity(
             id = conversation.id,
@@ -29,6 +35,19 @@ class ConversationRepositoryImpl(
             updatedAt = conversation.updatedAt
         )
         conversationEntityRepository.save(conversationEntity)
+
+        // スピーカー
+        val speakerEntities = conversation.speakers.map { speaker ->
+            SpeakerEntity(
+                id = speaker.id,
+                name = speaker.name,
+                setting = speaker.setting,
+                personality = speaker.personality,
+                image = speaker.image,
+                createdAt = speaker.createdAt
+            )
+        }
+        speakerEntityRepository.saveAll(speakerEntities)
 
         // セリフ
         val lineEntities = conversation.lines.map { line ->
@@ -66,5 +85,18 @@ class ConversationRepositoryImpl(
             )
         }
         conversationSentenceEntityRepository.saveAll(sentenceEntities)
+
+        // user_conversationsも保存
+        if (userId != null) {
+            val userConversation = UserConversationEntity(
+                id = UUID.randomUUID().toString(),
+                userId = userId.toLong(),
+                conversationId = conversation.id,
+                status = "new",
+                lastAccessedAt = null,
+                createdAt = conversation.createdAt
+            )
+            userConversationEntityRepository.save(userConversation)
+        }
     }
 } 

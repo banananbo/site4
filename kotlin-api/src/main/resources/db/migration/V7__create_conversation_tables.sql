@@ -51,4 +51,14 @@ CREATE TABLE user_conversations (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+
+-- speakers（会話の登場人物）
+CREATE TABLE speakers (
+  id VARCHAR(36) PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  setting TEXT,
+  personality TEXT,
+  image TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ); 

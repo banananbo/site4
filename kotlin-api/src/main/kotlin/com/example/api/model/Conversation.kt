@@ -10,6 +10,7 @@ data class Conversation(
     val title: String,
     val description: String?,
     val level: Int,
+    val speakers: List<Speaker>,
     val lines: List<ConversationLine>,
     val words: List<WordRef>,        // 会話全体で使われる単語リスト
     val sentences: List<SentenceRef>,// 会話全体で使われる例文リスト
@@ -21,29 +22,44 @@ data class Conversation(
             id: String,
             title: String?,
             level: Int?,
-            conversationPairs: List<Pair<String, String>>,
+            generated: com.example.api.service.OpenAIService.GeneratedConversation?,
             wordEntities: List<com.example.api.entity.WordEntity>,
             sentenceEntities: List<com.example.api.entity.SentenceEntity>,
             now: LocalDateTime
         ): Conversation {
             val wordRefs = wordEntities.map { WordRef(it.id, it.word) }
             val sentenceRefs = sentenceEntities.map { SentenceRef(it.id, it.sentence) }
-            val lines = conversationPairs.mapIndexed { idx, (english, japanese) ->
+            // 仮ID→新IDのマッピングを作成
+            val speakerIdMap = mutableMapOf<String, String>()
+            val speakers = generated?.speakers?.map { genSpeaker ->
+                val newId = UUID.randomUUID().toString()
+                speakerIdMap[genSpeaker.id] = newId
+                Speaker(
+                    id = newId,
+                    name = genSpeaker.name,
+                    setting = genSpeaker.setting,
+                    personality = genSpeaker.personality,
+                    image = genSpeaker.image,
+                    createdAt = now
+                )
+            } ?: emptyList()
+            val lines = generated?.lines?.mapIndexed { idx, line ->
                 ConversationLine(
                     id = UUID.randomUUID().toString(),
                     lineOrder = idx + 1,
-                    speaker = null,
-                    sentence = english,
-                    translation = japanese,
+                    speaker = line.speaker?.let { speakerIdMap[it] },
+                    sentence = line.english,
+                    translation = line.japanese,
                     createdAt = now,
                     updatedAt = now
                 )
-            }
+            } ?: emptyList()
             return Conversation(
                 id = id,
                 title = title ?: "Generated Conversation",
-                description = null,
+                description = generated?.description,
                 level = level ?: 1,
+                speakers = speakers,
                 lines = lines,
                 words = wordRefs,
                 sentences = sentenceRefs,
@@ -82,4 +98,13 @@ data class UserConversationProgress(
     val createdAt: LocalDateTime
 )
 
-enum class ConversationLearningStatus { NEW, LEARNING, COMPLETED } 
+enum class ConversationLearningStatus { NEW, LEARNING, COMPLETED }
+
+data class Speaker(
+    val id: String,
+    val name: String,
+    val setting: String?,
+    val personality: String?,
+    val image: String?,
+    val createdAt: LocalDateTime
+) 
