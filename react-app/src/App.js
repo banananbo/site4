@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import WordManagement from './pages/WordManagement';
 import ConversationPage from './pages/ConversationPage';
 import ConversationDetail from './pages/ConversationDetail';
+import IdiomsManagement from './pages/IdiomsManagement';
 import './App.css';
 
 function App() {
@@ -37,6 +38,14 @@ function App() {
             />
             <Route path="/conversation" element={<ConversationPage />} />
             <Route path="/conversations/:id" element={<ConversationDetail />} />
+            <Route
+              path="/idioms"
+              element={
+                <PrivateRoute>
+                  <IdiomsManagement />
+                </PrivateRoute>
+              }
+            />
             <Route path="/" element={<Navigate to="/login" replace />} />
           </Routes>
         </Layout>

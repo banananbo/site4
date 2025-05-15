@@ -14,6 +14,7 @@ data class Conversation(
     val lines: List<ConversationLine>,
     val words: List<WordRef>,        // 会話全体で使われる単語リスト
     val sentences: List<SentenceRef>,// 会話全体で使われる例文リスト
+    val idioms: List<IdiomRef>,      // 会話全体で使われるイディオムリスト
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
 ) {
@@ -25,10 +26,12 @@ data class Conversation(
             generated: com.example.api.service.OpenAIService.GeneratedConversation?,
             wordEntities: List<com.example.api.entity.WordEntity>,
             sentenceEntities: List<com.example.api.entity.SentenceEntity>,
+            idiomEntities: List<com.example.api.entity.IdiomEntity>,
             now: LocalDateTime
         ): Conversation {
             val wordRefs = wordEntities.map { WordRef(it.id, it.word) }
             val sentenceRefs = sentenceEntities.map { SentenceRef(it.id, it.sentence) }
+            val idiomRefs = idiomEntities.map { IdiomRef(it.id, it.idiom) }
             // 仮ID→新IDのマッピングを作成
             val speakerIdMap = mutableMapOf<String, String>()
             val speakers = generated?.speakers?.map { genSpeaker ->
@@ -66,6 +69,7 @@ data class Conversation(
                 lines = lines,
                 words = wordRefs,
                 sentences = sentenceRefs,
+                idioms = idiomRefs,
                 createdAt = now,
                 updatedAt = now
             )
@@ -91,6 +95,11 @@ data class WordRef(
 data class SentenceRef(
     val id: String,
     val sentence: String
+)
+
+data class IdiomRef(
+    val id: String,
+    val idiom: String
 )
 
 data class UserConversationProgress(

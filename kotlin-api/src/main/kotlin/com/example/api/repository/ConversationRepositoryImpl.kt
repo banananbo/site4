@@ -5,10 +5,12 @@ import com.example.api.entity.ConversationEntity
 import com.example.api.entity.ConversationLineEntity
 import com.example.api.entity.ConversationWordEntity
 import com.example.api.entity.ConversationSentenceEntity
+import com.example.api.entity.ConversationIdiomEntity
 import com.example.api.entity.SpeakerEntity
 import com.example.api.repository.SpeakerEntityRepository
 import com.example.api.entity.UserConversationEntity
 import com.example.api.repository.UserConversationEntityRepository
+import com.example.api.repository.ConversationIdiomEntityRepository
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
@@ -19,6 +21,7 @@ class ConversationRepositoryImpl(
     private val conversationLineEntityRepository: ConversationLineEntityRepository,
     private val conversationWordEntityRepository: ConversationWordEntityRepository,
     private val conversationSentenceEntityRepository: ConversationSentenceEntityRepository,
+    private val conversationIdiomEntityRepository: ConversationIdiomEntityRepository,
     private val speakerEntityRepository: SpeakerEntityRepository,
     private val userConversationEntityRepository: UserConversationEntityRepository
 ) : ConversationRepository {
@@ -88,6 +91,17 @@ class ConversationRepositoryImpl(
             )
         }
         conversationSentenceEntityRepository.saveAll(sentenceEntities)
+
+        // 会話全体で使われるIdiom
+        val idiomEntities = conversation.idioms.map { idiomRef ->
+            ConversationIdiomEntity(
+                id = UUID.randomUUID().toString(),
+                conversationId = conversation.id,
+                idiomId = idiomRef.id,
+                createdAt = conversation.createdAt
+            )
+        }
+        conversationIdiomEntityRepository.saveAll(idiomEntities)
 
         // user_conversationsも保存
         if (userId != null) {

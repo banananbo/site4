@@ -350,20 +350,21 @@ class OpenAIService(
         situation: String?,
         level: Int?,
         learningWords: List<String>,
-        learningSentences: List<String>
+        learningSentences: List<String>,
+        learningIdioms: List<String>
     ): GeneratedConversation? {
         val startTime = System.currentTimeMillis()
         val prompt = buildString {
             append("あなたは英語学習アシスタントです。\n")
-            append("以下の条件で英会話例を生成してください。ユーザーが学習中の単語を使い、学習中の例文に近い表現を利用して会話をします\n")
+            append("以下の条件で英会話例を生成してください。ユーザーが学習中の単語やイディオムを使い会話をします\n")
             append("・シチュエーション: ")
             append(situation ?: "指定なし")
             append("\n・レベル: ")
             append(level ?: "指定なし")
             append("\n・ユーザーが現在学習中の単語: ")
             append(learningWords.joinToString(", "))
-            append("\n・ユーザーが現在学習中の例文: ")
-            append(learningSentences.joinToString(", "))
+            append("\n・ユーザーが現在学習中のイディオム: ")
+            append(learningIdioms.joinToString(", "))
             append("\n---\n")
             append("descriptionには、誰と誰が、いつ、どこで、どのような状況で、どんなことについて会話をしているかを英語で簡潔に記述してください。\n")
             append("出力フォーマットは必ず以下のJSONで返してください。\n")

@@ -24,6 +24,7 @@ import com.example.api.repository.SentenceIdiomRepository
 import com.example.api.repository.SentenceGrammarRepository
 import com.example.api.repository.UserWordRepository
 import com.example.api.repository.UserSentenceRepository
+import com.example.api.repository.UserIdiomRepository
 import com.example.api.entity.LearningStatusEntity
 import com.example.api.repository.ConversationRepository
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -51,6 +52,7 @@ class JobService(
     private val sentenceGrammarRepository: SentenceGrammarRepository,
     private val userWordRepository: UserWordRepository,
     private val userSentenceRepository: UserSentenceRepository,
+    private val userIdiomRepository: UserIdiomRepository,
     private val conversationRepository: ConversationRepository
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -361,8 +363,17 @@ class JobService(
         val userId = payloadNode.get("user_id")?.asText()
         val situation = payloadNode.get("situation")?.asText()
         val level = payloadNode.get("level")?.asInt()
+        val idiomIds = payloadNode.get("idiom_ids")?.let {
+            if (it.isArray) {
+                val list = mutableListOf<String>()
+                it.forEach { node -> list.add(node.asText()) }
+                list
+            } else {
+                null
+            }
+        }
 
-        logger.info("会話生成ジョブ ${job.id} のpayload: user_id=$userId, situation=$situation, level=$level")
+        logger.info("会話生成ジョブ ${job.id} のpayload: user_id=$userId, situation=$situation, level=$level, idiomIds=$idiomIds")
 
         // 学習中Wordの取得
         val learningWords = userWordRepository.findAll().filter {
@@ -376,14 +387,30 @@ class JobService(
         }
         logger.info("学習中センテンス件数: ${learningSentences.size}")
 
-        // 実際の単語・センテンスを取得
+        // 学習中イディオムの取得
+        val learningIdioms = if (idiomIds != null && idiomIds.isNotEmpty()) {
+            // 指定されたイディオムIDがある場合は、それらを取得
+            idiomIds.mapNotNull { idiomId ->
+                userIdiomRepository.findByUserIdAndIdiomId(userId?.toLong() ?: 0, idiomId)
+            }
+        } else {
+            // 指定がない場合は、学習中のイディオムを全て取得
+            userIdiomRepository.findAll().filter {
+                it.userId.toString() == userId && it.learningStatus == LearningStatusEntity.learning
+            }
+        }
+        logger.info("学習中イディオム件数: ${learningIdioms.size}")
+
+        // 実際の単語・センテンス・イディオムを取得
         val wordEntities = learningWords.mapNotNull { wordRepository.findById(it.wordId).orElse(null) }
         val sentenceEntities = learningSentences.mapNotNull { sentenceRepository.findById(it.sentenceId).orElse(null) }
+        val idiomEntities = learningIdioms.mapNotNull { idiomRepository.findById(it.idiomId).orElse(null) }
         val wordList = wordEntities.map { it.word }
         val sentenceList = sentenceEntities.map { it.sentence }
+        val idiomList = idiomEntities.map { it.idiom }
 
         // OpenAIで会話生成
-        val generatedConversation = openAIService.generateConversation(userId, situation, level, wordList, sentenceList)
+        val generatedConversation = openAIService.generateConversation(userId, situation, level, wordList, sentenceList, idiomList)
         logger.info("生成された会話: ${generatedConversation}")
 
         // Conversation集約の初期化
@@ -396,6 +423,7 @@ class JobService(
             generated = generatedConversation,
             wordEntities = wordEntities,
             sentenceEntities = sentenceEntities,
+            idiomEntities = idiomEntities,
             now = now
         )
         logger.info("Conversation集約初期化: $conversation")

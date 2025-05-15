@@ -16,6 +16,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/profile', label: 'プロフィール', icon: '👤' },
     { path: '/settings', label: '設定', icon: '⚙️' },
     { path: '/help', label: 'ヘルプ', icon: '❓' },
+    { path: '/idioms', label: 'イディオム管理', icon: '🌐' },
   ];
 
   return (

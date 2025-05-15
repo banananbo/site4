@@ -189,7 +189,8 @@ class JobController(
         val payload = mapOf(
             "user_id" to userId.toString(),
             "situation" to request.situation,
-            "level" to request.level
+            "level" to request.level,
+            "idiom_ids" to request.idiomIds
         )
         val job = ProcessingJobEntity(
             id = jobId,
@@ -212,5 +213,6 @@ class JobController(
 // --- リクエストDTO ---
 data class ConversationGenerationJobRequest(
     val situation: String,
-    val level: Int? = null
+    val level: Int? = null,
+    val idiomIds: List<String>? = null
 ) 

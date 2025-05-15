@@ -5,13 +5,16 @@ import com.example.api.model.Speaker
 import com.example.api.model.ConversationLine
 import com.example.api.model.WordRef
 import com.example.api.model.SentenceRef
+import com.example.api.model.IdiomRef
 import com.example.api.repository.ConversationEntityRepository
 import com.example.api.repository.ConversationLineEntityRepository
 import com.example.api.repository.ConversationWordEntityRepository
 import com.example.api.repository.ConversationSentenceEntityRepository
+import com.example.api.repository.ConversationIdiomEntityRepository
 import com.example.api.repository.SpeakerEntityRepository
 import com.example.api.repository.WordRepository
 import com.example.api.repository.SentenceRepository
+import com.example.api.repository.IdiomRepository
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RestController
@@ -23,9 +26,11 @@ class ConversationController(
     private val conversationLineEntityRepository: ConversationLineEntityRepository,
     private val conversationWordEntityRepository: ConversationWordEntityRepository,
     private val conversationSentenceEntityRepository: ConversationSentenceEntityRepository,
+    private val conversationIdiomEntityRepository: ConversationIdiomEntityRepository,
     private val speakerEntityRepository: SpeakerEntityRepository,
     private val wordRepository: WordRepository,
-    private val sentenceRepository: SentenceRepository
+    private val sentenceRepository: SentenceRepository,
+    private val idiomRepository: IdiomRepository
 ) {
     @GetMapping("/api/conversations")
     fun getConversations(): List<ConversationSummary> {
@@ -48,6 +53,7 @@ class ConversationController(
         val lines = conversationLineEntityRepository.findAll().filter { it.conversationId == id }
         val words = conversationWordEntityRepository.findAll().filter { it.conversationId == id }
         val sentences = conversationSentenceEntityRepository.findAll().filter { it.conversationId == id }
+        val idioms = conversationIdiomEntityRepository.findAll().filter { it.conversationId == id }
         return Conversation(
             id = entity.id,
             title = entity.title,
@@ -84,6 +90,10 @@ class ConversationController(
             sentences = sentences.map {
                 val sentence = sentenceRepository.findById(it.sentenceId).orElse(null)
                 SentenceRef(it.sentenceId, sentence?.sentence ?: "")
+            },
+            idioms = idioms.map {
+                val idiom = idiomRepository.findById(it.idiomId).orElse(null)
+                IdiomRef(it.idiomId, idiom?.idiom ?: "")
             },
             createdAt = entity.createdAt,
             updatedAt = entity.updatedAt
