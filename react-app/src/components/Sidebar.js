@@ -12,6 +12,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const menuItems = [
     { path: '/dashboard', label: 'ダッシュボード', icon: '📊' },
     { path: '/words', label: '英単語管理', icon: '📚' },
+    { path: '/conversation', label: '会話', icon: '💬' },
     { path: '/profile', label: 'プロフィール', icon: '👤' },
     { path: '/settings', label: '設定', icon: '⚙️' },
     { path: '/help', label: 'ヘルプ', icon: '❓' },

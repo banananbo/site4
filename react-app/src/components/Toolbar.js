@@ -1,36 +1,22 @@
 import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import './Toolbar.css';
-import { Link } from 'react-router-dom';
-import { FaHome, FaBook, FaComments, FaSignOutAlt } from 'react-icons/fa';
 
 const Toolbar = ({ onMenuClick }) => {
-  const { isAuthenticated, logout } = useAuth();
-
   return (
     <header className="toolbar-modern">
       <div className="toolbar-left">
-        {/* ハンバーガーメニュー（モバイルのみ表示） */}
-        {isAuthenticated && (
-          <button className="hamburger-menu" onClick={onMenuClick} aria-label="メニューを開く">
-            <span className="bar"></span>
-            <span className="bar"></span>
-            <span className="bar"></span>
-          </button>
-        )}
-        <h1 className="toolbar-title">BananaEng</h1>
-      </div>
-      <nav className="toolbar-nav-modern">
-        <Link to="/dashboard" className="toolbar-link"><FaHome className="toolbar-icon" />ダッシュボード</Link>
-        <Link to="/words" className="toolbar-link"><FaBook className="toolbar-icon" />単語</Link>
-        <Link to="/conversation" className="toolbar-link"><FaComments className="toolbar-icon" />会話</Link>
-      </nav>
-      <div className="toolbar-actions-modern">
-        {isAuthenticated && (
-          <button className="logout-button-modern" onClick={logout} title="ログアウト">
-            <FaSignOutAlt style={{marginRight:6}} /> ログアウト
-          </button>
-        )}
+        <button className="hamburger-menu" onClick={onMenuClick} aria-label="メニューを開く">
+          <span className="bar"></span>
+          <span className="bar"></span>
+          <span className="bar"></span>
+        </button>
+        <div className="toolbar-logo" style={{marginLeft:12}}>
+          <svg width="200" height="48" viewBox="0 0 200 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* BananaEngの文字のみ */}
+            <text x="30" y="32" fontFamily="Arial Rounded MT Bold, Arial, sans-serif" fontSize="28" fill="#f4b400" fontWeight="bold">Banana</text>
+            <text x="120" y="32" fontFamily="Arial Rounded MT Bold, Arial, sans-serif" fontSize="28" fill="#333" fontWeight="bold">Eng</text>
+          </svg>
+        </div>
       </div>
     </header>
   );

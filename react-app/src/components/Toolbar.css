@@ -5,8 +5,8 @@
   justify-content: space-between;
   background: #fff;
   box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-  padding: 0 32px;
-  height: 64px;
+  padding: 0 16px;
+  height: 52px;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -14,6 +14,11 @@
 .toolbar-left {
   display: flex;
   align-items: center;
+}
+.toolbar-logo {
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
 }
 .toolbar-title {
   font-size: 1.7em;
@@ -89,7 +94,10 @@
   .toolbar-modern {
     flex-direction: column;
     height: auto;
-    padding: 0 8px;
+    padding: 0 4px;
+  }
+  .toolbar-logo {
+    margin-left: 4px;
   }
   .toolbar-nav-modern {
     gap: 10px;
