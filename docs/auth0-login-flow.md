@@ -22,13 +22,13 @@ sequenceDiagram
     participant Auth0
     
     User->>React: ログインボタンをクリック
-    React->>API: ログインリクエスト送信　api.lvh,.me/api/login
+    React->>API: ログインリクエスト送信 /api/auth/login
     API-->>React: Auth0ログインURL返却
     React->>User: Auth0ログイン画面へリダイレクト
     User->>Auth0: 認証情報入力
     Auth0->>Auth0: 認証処理
-    Auth0-->>React: 認証結果(コード)をコールバックURLに返却 lvh,.me/callback
-    React->>API: 認証コードを送信 api.lvh,.me/api/code
+    Auth0-->>React: 認証結果(コード)をコールバックURLに返却 /callback
+    React->>API: 認証コードを送信 /api/auth/code
     API->>Auth0: コードをトークンに交換
     Auth0-->>API: アクセストークン・IDトークン
     API->>API: トークン検証
@@ -47,11 +47,11 @@ sequenceDiagram
 
 2. **認証プロセス**:
    - ユーザーがAuth0でログイン認証を実行
-   - 認証成功後、Auth0はフロントエンドのコールバックURL (`http://lvh.me/callback`) にリダイレクト（認証コード付き）
+   - 認証成功後、Auth0はフロントエンドのコールバックURL（例: `http://lvh.me/callback`）にリダイレクト（認証コード付き）
 
 3. **認証コード交換**:
    - フロントエンドが認証コードを取得
-   - フロントエンドは認証コードをKotlin APIの `/api/auth/callback` エンドポイントに送信
+   - フロントエンドは認証コードをKotlin APIの `/api/auth/code` エンドポイントに送信
    - Kotlin APIはコードをAuth0に送信し、アクセストークンとIDトークンを取得
    - Kotlin APIはトークンを検証し、ユーザー情報を取得
 
@@ -81,7 +81,7 @@ sequenceDiagram
 
 1. Kotlin APIに認証関連エンドポイントを実装:
    - `/api/auth/login`: ログインURL生成
-   - `/api/auth/callback`: 認証コード処理とトークン交換
+   - `/api/auth/code`: 認証コード処理とトークン交換
    - `/api/auth/refresh`: トークンリフレッシュ
    - `/api/auth/logout`: ログアウト処理
 
