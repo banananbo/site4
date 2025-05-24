@@ -412,7 +412,7 @@ class JobService(
             idiomRepository.findAllById(idiomIds).toList()
         }
         val speakerEntities = if (speakerIds.isEmpty()) {
-            speakerRepository.findAll().toList()
+            listOf()
         } else {
             speakerRepository.findAllById(speakerIds).toList()
         }
