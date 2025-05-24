@@ -372,12 +372,16 @@ class OpenAIService(
             if (specifiedSpeakers.isNotEmpty()) {
                 append("\n・指定されたスピーカー:\n")
                 specifiedSpeakers.forEach { speaker ->
-                    append("  - ${speaker.name}")
+                    append("  - id: ${speaker.id}  name: ${speaker.name}")
+
                     speaker.age?.let { append(" (${it}歳)") }
                     speaker.nationality?.let { append(", $it") }
                     speaker.personality?.let { append(", 性格: $it") }
                     append("\n")
                 }
+                append("\n※指定されたスピーカーを必ず使用してください。\n")
+                append("※指定されたスピーカーのIDは渡すものを利用してください。\n")
+                append("※指定以外のキャラクターは必要に応じて生成してください。その際名前や性格、性別などの要素も生成してください。\n")
             }
             append("\n---\n")
             append("descriptionには、誰と誰が、いつ、どこで、どのような状況で、どんなことについて会話をしているかを英語で簡潔に記述してください。\n")
@@ -387,7 +391,7 @@ class OpenAIService(
   "description": "会話の説明（英語）",
   "speakers": [
     {
-      "id": "スピーカーID",
+      "id": "スピーカーID（指定されたスピーカーの場合はそのID、それ以外はA,B,C,D,E などの英文字1文字）",
       "name": "名前",
       "age": 年齢（数値）,
       "gender": "性別",

@@ -39,10 +39,10 @@ data class Conversation(
             // 仮ID→新IDのマッピングを作成
             val speakerIdMap = mutableMapOf<String, String>()
             val speakers = generated?.speakers?.map { genSpeaker ->
-                val newId = UUID.randomUUID().toString()
-                speakerIdMap[genSpeaker.id] = newId
+                val useId = if (genSpeaker.id.length == 1) UUID.randomUUID().toString() else genSpeaker.id
+                speakerIdMap[genSpeaker.id] = useId
                 Speaker(
-                    id = newId,
+                    id = useId,
                     name = genSpeaker.name,
                     age = genSpeaker.age,
                     gender = genSpeaker.gender,
