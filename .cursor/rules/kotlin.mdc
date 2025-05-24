@@ -1,0 +1,12 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+## 対象
+kotlin-api
+
+## フレームワーク・言語
+- Kotlin 1.7.22
+- Spring Boot 2.7.8
+- Java 11（JVMターゲット）

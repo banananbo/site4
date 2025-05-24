@@ -2,6 +2,7 @@ package com.example.api.controller
 
 import com.example.api.model.Sentence
 import com.example.api.model.LearningStatus
+import com.example.api.model.GrammarResponse
 import com.example.api.service.SentenceService
 import com.example.api.service.UserService
 import com.example.api.util.AuthUtils
@@ -21,13 +22,6 @@ data class IdiomResponse(
     val idiom: String,
     val meaning: String,
     val example: String?
-)
-
-data class GrammarResponse(
-    val id: String,
-    val pattern: String,
-    val explanation: String,
-    val level: String
 )
 
 data class SentenceDetailResponse(
@@ -62,12 +56,7 @@ data class SentenceDetailResponse(
                     )
                 } ?: emptyList(),
                 grammars = sentence.grammars?.map { 
-                    GrammarResponse(
-                        id = it.id,
-                        pattern = it.pattern,
-                        explanation = it.explanation,
-                        level = it.level.name
-                    )
+                    GrammarResponse.from(it)
                 } ?: emptyList(),
                 createdAt = sentence.createdAt.toString(),
                 updatedAt = sentence.updatedAt.toString()
