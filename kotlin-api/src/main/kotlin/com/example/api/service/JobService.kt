@@ -363,6 +363,15 @@ class JobService(
         val userId = payloadNode.get("user_id")?.asText()
         val situation = payloadNode.get("situation")?.asText()
         val level = payloadNode.get("level")?.asInt()
+        val wordIds = payloadNode.get("word_ids")?.let {
+            if (it.isArray) {
+                val list = mutableListOf<String>()
+                it.forEach { node -> list.add(node.asText()) }
+                list
+            } else {
+                null
+            }
+        }
         val idiomIds = payloadNode.get("idiom_ids")?.let {
             if (it.isArray) {
                 val list = mutableListOf<String>()
@@ -373,44 +382,41 @@ class JobService(
             }
         }
 
-        logger.info("会話生成ジョブ ${job.id} のpayload: user_id=$userId, situation=$situation, level=$level, idiomIds=$idiomIds")
+        logger.info("会話生成ジョブ ${job.id} のpayload: user_id=$userId, situation=$situation, level=$level, wordIds=$wordIds, idiomIds=$idiomIds")
 
-        // 学習中Wordの取得
-        val learningWords = userWordRepository.findAll().filter {
-            it.userId.toString() == userId && it.learningStatus == LearningStatusEntity.learning
+        // 指定されたWordの取得
+        val wordEntities = if (wordIds != null && wordIds.isNotEmpty()) {
+            wordIds.mapNotNull { wordId ->
+                wordRepository.findById(wordId).orElse(null)
+            }
+        } else {
+            // 指定がない場合は、学習中のWordを全て取得
+            val learningWords = userWordRepository.findAll().filter {
+                it.userId.toString() == userId && it.learningStatus == LearningStatusEntity.learning
+            }
+            learningWords.mapNotNull { wordRepository.findById(it.wordId).orElse(null) }
         }
-        logger.info("学習中Word件数: ${learningWords.size}")
+        logger.info("Word件数: ${wordEntities.size}")
 
-        // 学習中センテンスの取得
-        val learningSentences = userSentenceRepository.findAll().filter {
-            it.userId.toString() == userId && it.learningStatus == LearningStatusEntity.learning
-        }
-        logger.info("学習中センテンス件数: ${learningSentences.size}")
-
-        // 学習中イディオムの取得
-        val learningIdioms = if (idiomIds != null && idiomIds.isNotEmpty()) {
-            // 指定されたイディオムIDがある場合は、それらを取得
+        // 指定されたイディオムの取得
+        val idiomEntities = if (idiomIds != null && idiomIds.isNotEmpty()) {
             idiomIds.mapNotNull { idiomId ->
-                userIdiomRepository.findByUserIdAndIdiomId(userId?.toLong() ?: 0, idiomId)
+                idiomRepository.findById(idiomId).orElse(null)
             }
         } else {
             // 指定がない場合は、学習中のイディオムを全て取得
-            userIdiomRepository.findAll().filter {
+            val learningIdioms = userIdiomRepository.findAll().filter {
                 it.userId.toString() == userId && it.learningStatus == LearningStatusEntity.learning
             }
+            learningIdioms.mapNotNull { idiomRepository.findById(it.idiomId).orElse(null) }
         }
-        logger.info("学習中イディオム件数: ${learningIdioms.size}")
+        logger.info("イディオム件数: ${idiomEntities.size}")
 
-        // 実際の単語・センテンス・イディオムを取得
-        val wordEntities = learningWords.mapNotNull { wordRepository.findById(it.wordId).orElse(null) }
-        val sentenceEntities = learningSentences.mapNotNull { sentenceRepository.findById(it.sentenceId).orElse(null) }
-        val idiomEntities = learningIdioms.mapNotNull { idiomRepository.findById(it.idiomId).orElse(null) }
         val wordList = wordEntities.map { it.word }
-        val sentenceList = sentenceEntities.map { it.sentence }
         val idiomList = idiomEntities.map { it.idiom }
 
         // OpenAIで会話生成
-        val generatedConversation = openAIService.generateConversation(userId, situation, level, wordList, sentenceList, idiomList)
+        val generatedConversation = openAIService.generateConversation(userId, situation, level, wordList, emptyList(), idiomList)
         logger.info("生成された会話: ${generatedConversation}")
 
         // Conversation集約の初期化
@@ -422,7 +428,7 @@ class JobService(
             level = level,
             generated = generatedConversation,
             wordEntities = wordEntities,
-            sentenceEntities = sentenceEntities,
+            sentenceEntities = emptyList(),
             idiomEntities = idiomEntities,
             now = now
         )

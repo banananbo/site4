@@ -190,6 +190,7 @@ class JobController(
             "user_id" to userId.toString(),
             "situation" to request.situation,
             "level" to request.level,
+            "word_ids" to request.wordIds,
             "idiom_ids" to request.idiomIds
         )
         val job = ProcessingJobEntity(
@@ -214,5 +215,6 @@ class JobController(
 data class ConversationGenerationJobRequest(
     val situation: String,
     val level: Int? = null,
+    val wordIds: List<String>? = null,
     val idiomIds: List<String>? = null
 ) 
