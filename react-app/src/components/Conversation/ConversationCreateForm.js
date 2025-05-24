@@ -10,12 +10,18 @@ const ConversationCreateForm = () => {
   const [error, setError] = useState('');
   const [words, setWords] = useState([]);
   const [idioms, setIdioms] = useState([]);
+  const [speakers, setSpeakers] = useState([]);
+  const [grammars, setGrammars] = useState([]);
   const [selectedWordIds, setSelectedWordIds] = useState([]);
   const [selectedIdiomIds, setSelectedIdiomIds] = useState([]);
+  const [selectedSpeakerIds, setSelectedSpeakerIds] = useState([]);
+  const [selectedGrammarIds, setSelectedGrammarIds] = useState([]);
 
   const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/jobs/conversation-generation`;
   const wordsApiUrl = `${process.env.REACT_APP_API_URL || ''}/api/words/user`;
   const idiomsApiUrl = `${process.env.REACT_APP_API_URL || ''}/api/idioms/learning`;
+  const speakersApiUrl = `${process.env.REACT_APP_API_URL || ''}/api/speakers`;
+  const grammarsApiUrl = `${process.env.REACT_APP_API_URL || ''}/api/grammars`;
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -25,9 +31,11 @@ const ConversationCreateForm = () => {
           'Authorization': `Bearer ${token}`
         };
 
-        const [wordsRes, idiomsRes] = await Promise.all([
+        const [wordsRes, idiomsRes, speakersRes, grammarsRes] = await Promise.all([
           fetch(wordsApiUrl, { headers }),
-          fetch(idiomsApiUrl, { headers })
+          fetch(idiomsApiUrl, { headers }),
+          fetch(speakersApiUrl, { headers }),
+          fetch(grammarsApiUrl, { headers })
         ]);
 
         if (wordsRes.ok) {
@@ -59,6 +67,24 @@ const ConversationCreateForm = () => {
             setIdioms([]);
           }
         }
+
+        if (speakersRes.ok) {
+          const speakersData = await speakersRes.json();
+          if (speakersData && speakersData.content) {
+            setSpeakers(speakersData.content);
+          } else if (Array.isArray(speakersData)) {
+            setSpeakers(speakersData);
+          }
+        }
+
+        if (grammarsRes.ok) {
+          const grammarsData = await grammarsRes.json();
+          if (grammarsData && grammarsData.content) {
+            setGrammars(grammarsData.content);
+          } else if (Array.isArray(grammarsData)) {
+            setGrammars(grammarsData);
+          }
+        }
       } catch (e) {
         console.error('データ取得エラー:', e);
         setError('アイテムの取得に失敗しました');
@@ -82,7 +108,9 @@ const ConversationCreateForm = () => {
       situation: situation.trim(),
       level: level ? parseInt(level, 10) : 1,
       wordIds: selectedWordIds,
-      idiomIds: selectedIdiomIds
+      idiomIds: selectedIdiomIds,
+      speakerIds: selectedSpeakerIds,
+      grammarIds: selectedGrammarIds
     };
 
     console.log('リクエストボディ:', requestBody);
@@ -113,6 +141,8 @@ const ConversationCreateForm = () => {
       setLevel('');
       setSelectedWordIds([]);
       setSelectedIdiomIds([]);
+      setSelectedSpeakerIds([]);
+      setSelectedGrammarIds([]);
     } catch (e) {
       console.error('送信エラー:', e);
       setError(e.message || '通信エラーが発生しました');
@@ -134,6 +164,18 @@ const ConversationCreateForm = () => {
       prev.includes(idiomId)
         ? prev.filter(id => id !== idiomId)
         : [...prev, idiomId]
+    );
+  };
+
+  const handleSpeakerSelect = (speakerId) => {
+    setSelectedSpeakerIds(prev => 
+      prev.includes(speakerId) ? prev.filter(id => id !== speakerId) : [...prev, speakerId]
+    );
+  };
+
+  const handleGrammarSelect = (grammarId) => {
+    setSelectedGrammarIds(prev => 
+      prev.includes(grammarId) ? prev.filter(id => id !== grammarId) : [...prev, grammarId]
     );
   };
 
@@ -199,6 +241,49 @@ const ConversationCreateForm = () => {
               </div>
             ) : (
               <p className="no-items">イディオムが見つかりません</p>
+            )}
+          </div>
+        </div>
+
+        <div className="form-group">
+          <h3>スピーカーを選択（任意）</h3>
+          <div className="selection-container">
+            {speakers.length > 0 ? (
+              <div className="selection-grid">
+                {speakers.map(speaker => (
+                  <div
+                    key={`speaker-${speaker.id}`}
+                    className={`selection-item ${selectedSpeakerIds.includes(speaker.id) ? 'selected' : ''}`}
+                    onClick={() => handleSpeakerSelect(speaker.id)}
+                  >
+                    {speaker.name}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="no-items">スピーカーが見つかりません</p>
+            )}
+          </div>
+        </div>
+
+        <div className="form-group">
+          <h3>使用する文法を選択（任意）</h3>
+          <div className="selection-container">
+            {grammars.length > 0 ? (
+              <div className="selection-grid">
+                {grammars.map(grammar => (
+                  <div
+                    key={`grammar-${grammar.id}`}
+                    className={`selection-item ${selectedGrammarIds.includes(grammar.id) ? 'selected' : ''}`}
+                    onClick={() => handleGrammarSelect(grammar.id)}
+                    title={grammar.explanation}
+                  >
+                    {grammar.pattern}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="no-items">文法が見つかりません</p>
             )}
           </div>
         </div>

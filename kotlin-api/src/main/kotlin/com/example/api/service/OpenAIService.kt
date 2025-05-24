@@ -220,7 +220,7 @@ class OpenAIService(
                         val jsonNode = objectMapper.readTree(extractedJson)
                         
                         // translationノードの処理
-                        val translation = jsonNode.get("translation")?.asText()
+                        val translation_node = jsonNode.get("translation")?.asText()
                         
                         // idiomsノードの処理
                         val idioms = mutableListOf<SentenceAnalysisResponse.IdiomInfo>()
@@ -256,8 +256,8 @@ class OpenAIService(
                             }
                         }
                         
-                        logger.info("手動JSONパースに成功しました: 翻訳=${translation != null}, イディオム=${idioms.size}, 文法=${grammars.size}")
-                        SentenceAnalysisResponse(translation, idioms, grammars)
+                        logger.info("手動JSONパースに成功しました: 翻訳=${translation_node != null}, イディオム=${idioms.size}, 文法=${grammars.size}")
+                        SentenceAnalysisResponse(translation_node, idioms, grammars)
                     } catch (e3: Exception) {
                         logger.error("手動JSONパースにも失敗しました: ${e3.message}")
                         // すべてのパースが失敗した場合は空のレスポンスを返す
@@ -351,12 +351,14 @@ class OpenAIService(
         level: Int?,
         learningWords: List<String>,
         learningSentences: List<String>,
-        learningIdioms: List<String>
+        learningIdioms: List<String>,
+        learningGrammars: List<String>,
+        specifiedSpeakers: List<GeneratedSpeaker>
     ): GeneratedConversation? {
         val startTime = System.currentTimeMillis()
         val prompt = buildString {
             append("あなたは英語学習アシスタントです。\n")
-            append("以下の条件で英会話例を生成してください。ユーザーが学習中の単語やイディオムを使い会話をします\n")
+            append("以下の条件で英会話例を生成してください。ユーザーが学習中の単語やイディオム、文法を使い会話をします\n")
             append("・シチュエーション: ")
             append(situation ?: "指定なし")
             append("\n・レベル: ")
@@ -365,44 +367,41 @@ class OpenAIService(
             append(learningWords.joinToString(", "))
             append("\n・ユーザーが現在学習中のイディオム: ")
             append(learningIdioms.joinToString(", "))
+            append("\n・使用する文法パターン: ")
+            append(learningGrammars.joinToString(", "))
+            if (specifiedSpeakers.isNotEmpty()) {
+                append("\n・指定されたスピーカー:\n")
+                specifiedSpeakers.forEach { speaker ->
+                    append("  - ${speaker.name}")
+                    speaker.age?.let { append(" (${it}歳)") }
+                    speaker.nationality?.let { append(", $it") }
+                    speaker.personality?.let { append(", 性格: $it") }
+                    append("\n")
+                }
+            }
             append("\n---\n")
             append("descriptionには、誰と誰が、いつ、どこで、どのような状況で、どんなことについて会話をしているかを英語で簡潔に記述してください。\n")
             append("出力フォーマットは必ず以下のJSONで返してください。\n")
             append("""
 {
-  "description": "Alice and Bob are talking about their weekend plans at a cafe on Saturday afternoon.",
+  "description": "会話の説明（英語）",
   "speakers": [
     {
-      "id": "A",
-      "name": "Alice",
-      "age": 20,
-      "gender": "female",
-      "nationality": "Japanese",
-      "setting": "学生",
-      "personality": "明るく前向き",
-      "image": ""
-    },
-    {
-      "id": "B",
-      "name": "Bob",
-      "age": 35,
-      "gender": "male",
-      "nationality": "American",
-      "setting": "先生",
-      "personality": "優しく丁寧",
-      "image": ""
+      "id": "スピーカーID",
+      "name": "名前",
+      "age": 年齢（数値）,
+      "gender": "性別",
+      "nationality": "国籍",
+      "setting": "設定（例：学生、教師など）",
+      "personality": "性格",
+      "image": "画像URL"
     }
   ],
   "lines": [
     {
-      "speaker": "A",
-      "english": "Hello, how are you?",
-      "japanese": "こんにちは、お元気ですか？"
-    },
-    {
-      "speaker": "B",
-      "english": "I'm fine, thank you. And you?",
-      "japanese": "元気です。あなたは？"
+      "speaker": "スピーカーID",
+      "english": "英語のセリフ",
+      "japanese": "日本語訳"
     }
   ]
 }

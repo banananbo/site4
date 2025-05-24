@@ -8,22 +8,13 @@ import javax.persistence.*
 data class SpeakerEntity(
     @Id
     val id: String,
-    
-    @Column(nullable = false)
     val name: String,
-    
     val age: Int?,
-    
     val gender: String?,
-    
     val nationality: String?,
-    
     val setting: String?,
-    
     val personality: String?,
-    
     val image: String?,
-    
     @Column(name = "created_at", nullable = false)
     val createdAt: LocalDateTime
 ) 

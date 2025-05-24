@@ -15,6 +15,7 @@ data class Conversation(
     val words: List<WordRef>,        // 会話全体で使われる単語リスト
     val sentences: List<SentenceRef>,// 会話全体で使われる例文リスト
     val idioms: List<IdiomRef>,      // 会話全体で使われるイディオムリスト
+    val grammars: List<GrammarRef>,  // 会話全体で使われる文法リスト
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
 ) {
@@ -27,11 +28,14 @@ data class Conversation(
             wordEntities: List<com.example.api.entity.WordEntity>,
             sentenceEntities: List<com.example.api.entity.SentenceEntity>,
             idiomEntities: List<com.example.api.entity.IdiomEntity>,
+            grammarEntities: List<com.example.api.entity.GrammarEntity>,
             now: LocalDateTime
         ): Conversation {
             val wordRefs = wordEntities.map { WordRef(it.id, it.word) }
             val sentenceRefs = sentenceEntities.map { SentenceRef(it.id, it.sentence) }
             val idiomRefs = idiomEntities.map { IdiomRef(it.id, it.idiom) }
+            val grammarRefs = grammarEntities.map { GrammarRef(it.id, it.pattern) }
+
             // 仮ID→新IDのマッピングを作成
             val speakerIdMap = mutableMapOf<String, String>()
             val speakers = generated?.speakers?.map { genSpeaker ->
@@ -49,6 +53,7 @@ data class Conversation(
                     createdAt = now
                 )
             } ?: emptyList()
+
             val lines = generated?.lines?.mapIndexed { idx, line ->
                 ConversationLine(
                     id = UUID.randomUUID().toString(),
@@ -60,6 +65,7 @@ data class Conversation(
                     updatedAt = now
                 )
             } ?: emptyList()
+
             return Conversation(
                 id = id,
                 title = title ?: "Generated Conversation",
@@ -70,6 +76,7 @@ data class Conversation(
                 words = wordRefs,
                 sentences = sentenceRefs,
                 idioms = idiomRefs,
+                grammars = grammarRefs,
                 createdAt = now,
                 updatedAt = now
             )
@@ -100,6 +107,11 @@ data class SentenceRef(
 data class IdiomRef(
     val id: String,
     val idiom: String
+)
+
+data class GrammarRef(
+    val id: String,
+    val pattern: String
 )
 
 data class UserConversationProgress(
