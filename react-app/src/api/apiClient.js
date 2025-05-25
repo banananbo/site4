@@ -18,14 +18,32 @@ class ApiClient {
     // レスポンスインターセプターを設定
     this.client.interceptors.response.use(
       (response) => response,
-      (error) => {
+      async (error) => {
         // 認証エラー（401）の場合の処理
         if (error.response && error.response.status === 401) {
-          // トークンをクリア
-          this.setAuthToken(null);
-          localStorage.removeItem('token');
-          // ログインページにリダイレクト
-          window.location.href = '/login';
+          // ローカルストレージのトークンを再確認
+          const currentToken = localStorage.getItem('token');
+          
+          if (currentToken) {
+            // トークンが存在する場合、再設定して再試行
+            this.setAuthToken(currentToken);
+            try {
+              // 失敗したリクエストを再試行
+              const originalRequest = error.config;
+              return await this.client(originalRequest);
+            } catch (retryError) {
+              // 再試行も失敗した場合は、ログアウト処理を実行
+              this.setAuthToken(null);
+              localStorage.removeItem('token');
+              window.location.href = '/login';
+              return Promise.reject(retryError);
+            }
+          } else {
+            // トークンが存在しない場合は、通常のログアウト処理
+            this.setAuthToken(null);
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(error);
       }

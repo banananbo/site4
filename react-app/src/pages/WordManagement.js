@@ -3,8 +3,17 @@ import axios from 'axios';
 import { AuthContext } from '../contexts/AuthContext';
 import TextInputForm from '../components/TextInputForm';
 import LearningStatusSelector from '../components/LearningStatusSelector';
+import WordList from '../components/Word/WordList';
+import SentenceList from '../components/Sentence/SentenceList';
 import './WordManagement.css';
 import { apiClient } from '../api/apiClient';
+
+// 更新アイコンのSVGコンポーネント
+const RefreshIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c-4.97 0-9-4.03-9-9m9 9a9 9 0 009-9m-9 0a9 9 0 00-9 9" />
+  </svg>
+);
 
 const WordManagement = () => {
   const [words, setWords] = useState([]);
@@ -514,105 +523,6 @@ const WordManagement = () => {
     });
   };
 
-  // 単語一覧テーブルのレンダリング
-  const renderWordTable = (wordList, isMyPage) => {
-    return (
-      <table>
-        <thead>
-          <tr>
-            <th>単語</th>
-            <th className="desktop-only">品詞</th>
-            <th className="desktop-only">例文</th>
-            <th>意味</th>
-            {isMyPage ? <th>操作</th> : <th>追加</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {wordList.map(word => (
-            <tr key={word.id}>
-              <td className="word-cell" onClick={() => handleWordClick(word)} data-label="単語">
-                <span className="clickable-word">{word.word}</span>
-                <button 
-                  className="toggle-details-button mobile-only"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleRowExpand(word.id);
-                  }}
-                >
-                  {expandedRows.has(word.id) ? '詳細を隠す' : '詳細を表示'}
-                </button>
-              </td>
-              <td data-label="意味">{word.meaning || '-'}</td>
-              <td className={`details-cell ${expandedRows.has(word.id) ? 'expanded' : ''}`} data-label="品詞">
-                {word.partOfSpeech || '-'}
-              </td>
-              <td className={`details-cell example-sentence ${expandedRows.has(word.id) ? 'expanded' : ''}`} data-label="例文">
-                {word.sentences && word.sentences.length > 0 ? (
-                  <div>
-                    <div className="sentence">{word.sentences[0].sentence}</div>
-                    <div className="translation">{word.sentences[0].translation}</div>
-                  </div>
-                ) : '例文なし'}
-              </td>
-              <td data-label={isMyPage ? "操作" : "追加"} className={`${expandedRows.has(word.id) ? 'expanded' : ''}`}>
-                {isMyPage ? (
-                  <button 
-                    className="action-button remove-button" 
-                    onClick={() => removeWordFromUser(word.id)}
-                  >
-                    削除
-                  </button>
-                ) : (
-                  <button 
-                    className="action-button add-button" 
-                    onClick={() => addWordToUser(word.id)}
-                  >
-                    追加
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    );
-  };
-
-  // センテンス一覧テーブルのレンダリング
-  const renderSentenceTable = (sentenceList) => {
-    return (
-      <table>
-        <thead>
-          <tr>
-            <th>センテンス</th>
-            <th>日本語訳</th>
-            <th>分析状態</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sentenceList.map(sentence => (
-            <tr key={sentence.id}>
-              <td className="sentence-cell" onClick={() => handleSentenceClick(sentence)} data-label="センテンス">
-                <span className="clickable-sentence">{sentence.sentence}</span>
-              </td>
-              <td data-label="日本語訳">{sentence.translation || '-'}</td>
-              <td data-label="分析状態">{sentence.isAnalyzed ? '分析済み' : '分析中'}</td>
-              <td data-label="操作">
-                <button 
-                  className="action-button remove-button" 
-                  onClick={() => removeSentenceFromUser(sentence.id)}
-                >
-                  削除
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    );
-  };
-
   return (
     <div className="word-management-container">
       <h1>英単語管理</h1>
@@ -644,50 +554,42 @@ const WordManagement = () => {
       <div className="word-list-section">
         {activeTab === 'mypage' ? (
           <>
-            <h2>{user?.name || 'あなた'}の登録単語リスト</h2>
-            
-            {loading ? (
-              <div className="loading">読み込み中...</div>
-            ) : error ? (
-              <div className="error-message">{error}</div>
-            ) : !words || words.length === 0 ? (
-              <div className="empty-list">登録された単語はありません</div>
-            ) : (
-              <div className="word-list">
-                {renderWordTable(words, true)}
-              </div>
-            )}
+            <WordList
+              words={words}
+              isLoading={loading}
+              error={error}
+              isMyPage={true}
+              onWordClick={handleWordClick}
+              onRemoveWord={removeWordFromUser}
+              expandedRows={expandedRows}
+              onToggleRow={toggleRowExpand}
+              title={`${user?.name || 'あなた'}の登録単語リスト`}
+              onRefresh={fetchUserWords}
+            />
 
-            <h2>{user?.name || 'あなた'}の登録センテンスリスト</h2>
-            
-            {sentencesLoading ? (
-              <div className="loading">読み込み中...</div>
-            ) : sentencesError ? (
-              <div className="error-message">{sentencesError}</div>
-            ) : !sentences || sentences.length === 0 ? (
-              <div className="empty-list">登録されたセンテンスはありません</div>
-            ) : (
-              <div className="sentence-list">
-                {renderSentenceTable(sentences)}
-              </div>
-            )}
+            <SentenceList
+              sentences={sentences}
+              isLoading={sentencesLoading}
+              error={sentencesError}
+              onSentenceClick={handleSentenceClick}
+              onRemoveSentence={removeSentenceFromUser}
+              title={`${user?.name || 'あなた'}の登録センテンスリスト`}
+              onRefresh={fetchUserSentences}
+            />
           </>
         ) : (
-          <>
-            <h2>みんなの登録単語リスト</h2>
-            
-            {allWordsLoading ? (
-              <div className="loading">読み込み中...</div>
-            ) : allWordsError ? (
-              <div className="error-message">{allWordsError}</div>
-            ) : !allWords || allWords.length === 0 ? (
-              <div className="empty-list">登録された単語はありません</div>
-            ) : (
-              <div className="word-list">
-                {renderWordTable(allWords, false)}
-              </div>
-            )}
-          </>
+          <WordList
+            words={allWords}
+            isLoading={allWordsLoading}
+            error={allWordsError}
+            isMyPage={false}
+            onWordClick={handleWordClick}
+            onAddWord={addWordToUser}
+            expandedRows={expandedRows}
+            onToggleRow={toggleRowExpand}
+            title="みんなの登録単語リスト"
+            onRefresh={fetchAllWords}
+          />
         )}
       </div>
       
