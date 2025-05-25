@@ -443,4 +443,140 @@
   font-size: 0.9em;
   font-style: italic;
   color: #6c757d;
+}
+
+/* デスクトップ表示時のスタイル */
+.mobile-only {
+  display: none;
+}
+
+.toggle-details-button {
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  margin-left: 8px;
+  cursor: pointer;
+  color: #666;
+}
+
+.toggle-details-button:hover {
+  background: #e0e0e0;
+}
+
+/* スマートフォン向けのテーブルレイアウト */
+@media screen and (max-width: 768px) {
+  .desktop-only {
+    display: none;
+  }
+
+  .mobile-only {
+    display: inline-block;
+  }
+
+  .word-list table,
+  .sentence-list table {
+    display: block;
+  }
+
+  .word-list thead,
+  .sentence-list thead {
+    display: none;
+  }
+
+  .word-list tbody,
+  .sentence-list tbody,
+  .word-list tr,
+  .sentence-list tr {
+    display: block;
+  }
+
+  .word-list td,
+  .sentence-list td {
+    display: block;
+    text-align: left;
+    padding: 8px 12px;
+    position: relative;
+    border-bottom: none;
+  }
+
+  .details-cell {
+    display: none !important;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    margin: 4px 0;
+    border-radius: 4px;
+  }
+
+  .details-cell.expanded {
+    display: block !important;
+  }
+
+  .word-list tr,
+  .sentence-list tr {
+    margin-bottom: 16px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  .word-list td:before,
+  .sentence-list td:before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #495057;
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.85em;
+  }
+
+  .example-sentence {
+    max-width: none;
+  }
+
+  .action-button {
+    width: 100%;
+    padding: 8px;
+    margin-top: 8px;
+  }
+
+  .word-management-container {
+    padding: 12px;
+  }
+
+  .word-list-section {
+    padding: 12px;
+  }
+
+  .tabs {
+    justify-content: center;
+  }
+
+  .tab-button {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  /* モーダルのスマートフォン対応 */
+  .modal-content {
+    width: 90%;
+    margin: 20px auto;
+    padding: 16px;
+  }
+
+  .word-detail-card,
+  .sentence-detail-card {
+    padding: 12px;
+  }
+
+  .info-row {
+    flex-direction: column;
+    margin-bottom: 12px;
+  }
+
+  .info-label {
+    margin-bottom: 4px;
+  }
 } 

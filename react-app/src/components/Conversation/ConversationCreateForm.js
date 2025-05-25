@@ -246,27 +246,6 @@ const ConversationCreateForm = () => {
         </div>
 
         <div className="form-group">
-          <h3>スピーカーを選択（任意）</h3>
-          <div className="selection-container">
-            {speakers.length > 0 ? (
-              <div className="selection-grid">
-                {speakers.map(speaker => (
-                  <div
-                    key={`speaker-${speaker.id}`}
-                    className={`selection-item ${selectedSpeakerIds.includes(speaker.id) ? 'selected' : ''}`}
-                    onClick={() => handleSpeakerSelect(speaker.id)}
-                  >
-                    {speaker.name}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="no-items">スピーカーが見つかりません</p>
-            )}
-          </div>
-        </div>
-
-        <div className="form-group">
           <h3>使用する文法を選択（任意）</h3>
           <div className="selection-container">
             {grammars.length > 0 ? (
@@ -287,6 +266,46 @@ const ConversationCreateForm = () => {
             )}
           </div>
         </div>
+        
+        <div className="form-group">
+          <h3>スピーカーを選択（任意）</h3>
+          <div className="selection-container">
+            {speakers.length > 0 ? (
+              <div className="selection-grid">
+                {speakers.map(speaker => (
+                  <div
+                    key={`speaker-${speaker.id}`}
+                    className={`selection-item ${selectedSpeakerIds.includes(speaker.id) ? 'selected' : ''}`}
+                    onClick={() => handleSpeakerSelect(speaker.id)}
+                    title={`性格: ${speaker.personality || '未設定'}
+年齢: ${speaker.age || '未設定'}
+性別: ${speaker.gender || '未設定'}
+国籍: ${speaker.nationality || '未設定'}
+設定: ${speaker.setting || '未設定'}`}
+                  >
+                    <div className="speaker-name">{speaker.name}</div>
+                    <div className="speaker-details">
+                      <div className="speaker-personality">{speaker.personality}</div>
+                      <div className="speaker-attributes">
+                        <small>
+                          {[
+                            speaker.age && `${speaker.age}歳`,
+                            speaker.gender,
+                            speaker.nationality,
+                            speaker.setting
+                          ].filter(Boolean).join(' | ')}
+                        </small>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="no-items">スピーカーが見つかりません</p>
+            )}
+          </div>
+        </div>
+
 
         <div className="form-group">
           <button type="submit" disabled={loading || !situation.trim()}>
@@ -324,9 +343,7 @@ const ConversationCreateForm = () => {
           transition: all 0.2s ease;
           text-align: center;
           font-size: 14px;
-          white-space: nowrap;
           overflow: hidden;
-          text-overflow: ellipsis;
         }
 
         .selection-item:hover {
@@ -403,6 +420,33 @@ const ConversationCreateForm = () => {
           color: #f44336;
           margin-top: 10px;
           text-align: center;
+        }
+
+        .speaker-name {
+          font-weight: 500;
+          margin-bottom: 4px;
+        }
+
+        .speaker-details {
+          font-size: 12px;
+          color: #666;
+        }
+
+        .speaker-personality {
+          margin: 2px 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .speaker-attributes {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .speaker-details small {
+          display: inline-block;
         }
       `}</style>
     </div>

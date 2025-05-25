@@ -28,6 +28,7 @@ const WordManagement = () => {
   
   const { user, getAccessToken } = useContext(AuthContext);
   const [updateStatusLoading, setUpdateStatusLoading] = useState(false);
+  const [expandedRows, setExpandedRows] = useState(new Set());
 
   // ユーザーの単語一覧を取得
   const fetchUserWords = async () => {
@@ -587,6 +588,18 @@ const WordManagement = () => {
     );
   };
 
+  const toggleRowExpand = (wordId) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(wordId)) {
+        newSet.delete(wordId);
+      } else {
+        newSet.add(wordId);
+      }
+      return newSet;
+    });
+  };
+
   // 単語一覧テーブルのレンダリング
   const renderWordTable = (wordList, isMyPage) => {
     return (
@@ -594,21 +607,32 @@ const WordManagement = () => {
         <thead>
           <tr>
             <th>単語</th>
+            <th className="desktop-only">品詞</th>
+            <th className="desktop-only">例文</th>
             <th>意味</th>
-            <th>品詞</th>
-            <th>例文</th>
             {isMyPage ? <th>操作</th> : <th>追加</th>}
           </tr>
         </thead>
         <tbody>
           {wordList.map(word => (
             <tr key={word.id}>
-              <td className="word-cell" onClick={() => handleWordClick(word)}>
+              <td className="word-cell" onClick={() => handleWordClick(word)} data-label="単語">
                 <span className="clickable-word">{word.word}</span>
+                <button 
+                  className="toggle-details-button mobile-only"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleRowExpand(word.id);
+                  }}
+                >
+                  {expandedRows.has(word.id) ? '詳細を隠す' : '詳細を表示'}
+                </button>
               </td>
-              <td>{word.meaning || '-'}</td>
-              <td>{word.partOfSpeech || '-'}</td>
-              <td className="example-sentence">
+              <td data-label="意味">{word.meaning || '-'}</td>
+              <td className={`details-cell ${expandedRows.has(word.id) ? 'expanded' : ''}`} data-label="品詞">
+                {word.partOfSpeech || '-'}
+              </td>
+              <td className={`details-cell example-sentence ${expandedRows.has(word.id) ? 'expanded' : ''}`} data-label="例文">
                 {word.sentences && word.sentences.length > 0 ? (
                   <div>
                     <div className="sentence">{word.sentences[0].sentence}</div>
@@ -616,7 +640,7 @@ const WordManagement = () => {
                   </div>
                 ) : '例文なし'}
               </td>
-              <td>
+              <td data-label={isMyPage ? "操作" : "追加"}>
                 {isMyPage ? (
                   <button 
                     className="action-button remove-button" 
@@ -655,12 +679,12 @@ const WordManagement = () => {
         <tbody>
           {sentenceList.map(sentence => (
             <tr key={sentence.id}>
-              <td className="sentence-cell" onClick={() => handleSentenceClick(sentence)}>
+              <td className="sentence-cell" onClick={() => handleSentenceClick(sentence)} data-label="センテンス">
                 <span className="clickable-sentence">{sentence.sentence}</span>
               </td>
-              <td>{sentence.translation || '-'}</td>
-              <td>{sentence.isAnalyzed ? '分析済み' : '分析中'}</td>
-              <td>
+              <td data-label="日本語訳">{sentence.translation || '-'}</td>
+              <td data-label="分析状態">{sentence.isAnalyzed ? '分析済み' : '分析中'}</td>
+              <td data-label="操作">
                 <button 
                   className="action-button remove-button" 
                   onClick={() => removeSentenceFromUser(sentence.id)}
