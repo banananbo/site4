@@ -54,8 +54,11 @@ class ConversationController(
     @GetMapping("/api/conversations/{id}")
     fun getConversation(@PathVariable id: String): Conversation? {
         val entity = conversationEntityRepository.findById(id).orElse(null) ?: return null
-        val speakers = speakerEntityRepository.findAll().filter { true } // 必要に応じて絞り込み
         val lines = conversationLineEntityRepository.findAll().filter { it.conversationId == id }
+        val speakerIds = lines.map { it.speaker }.distinct()
+        val speakers = speakerEntityRepository.findAll().filter { speaker ->
+            speakerIds.contains(speaker.id)
+        }
         val words = conversationWordEntityRepository.findAll().filter { it.conversationId == id }
         val sentences = conversationSentenceEntityRepository.findAll().filter { it.conversationId == id }
         val idioms = conversationIdiomEntityRepository.findAll().filter { it.conversationId == id }

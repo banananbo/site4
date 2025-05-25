@@ -554,7 +554,7 @@ const WordManagement = () => {
                   </div>
                 ) : '例文なし'}
               </td>
-              <td data-label={isMyPage ? "操作" : "追加"}>
+              <td data-label={isMyPage ? "操作" : "追加"} className={`${expandedRows.has(word.id) ? 'expanded' : ''}`}>
                 {isMyPage ? (
                   <button 
                     className="action-button remove-button" 

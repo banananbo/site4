@@ -167,31 +167,33 @@
 
 /* アクションボタン */
 .action-button {
-  padding: 4px 10px;
-  border: none;
+  padding: 4px 12px;
   border-radius: 4px;
+  font-size: 0.85rem;
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  min-width: 60px;
 }
 
 .add-button {
-  background-color: #28a745;
-  color: white;
+  background-color: #f0f9ff;
+  color: #0369a1;
+  border-color: #0369a1;
 }
 
 .add-button:hover {
-  background-color: #218838;
+  background-color: #e0f2fe;
 }
 
 .remove-button {
-  background-color: #dc3545;
-  color: white;
+  background-color: #fef2f2;
+  color: #dc2626;
+  border-color: #dc2626;
 }
 
 .remove-button:hover {
-  background-color: #c82333;
+  background-color: #fee2e2;
 }
 
 /* クリック可能な単語のスタイル */
@@ -537,9 +539,9 @@
   }
 
   .action-button {
-    width: 100%;
-    padding: 8px;
-    margin-top: 8px;
+    padding: 3px 8px;
+    font-size: 0.8rem;
+    min-width: 50px;
   }
 
   .word-management-container {
