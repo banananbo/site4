@@ -31,6 +31,17 @@ const ConversationDetail = () => {
     fetchDetail();
   }, [id, authLoading, user]);
 
+  const handleCopyText = (text) => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        // コピー成功時の処理（必要に応じてトースト通知などを追加）
+        console.log('テキストをコピーしました');
+      })
+      .catch(err => {
+        console.error('コピーに失敗しました:', err);
+      });
+  };
+
   if (loading) return <div>読み込み中...</div>;
   if (error) return <div className="error-message">{error}</div>;
   if (!conversation) return <div>データがありません</div>;
@@ -42,6 +53,45 @@ const ConversationDetail = () => {
       <circle cx="24" cy="20" r="10" fill="#bbb" />
       <ellipse cx="24" cy="38" rx="14" ry="8" fill="#bbb" />
     </svg>
+  );
+
+  // スピーカー紹介セクション
+  const renderSpeakers = () => (
+    <div className="speakers-section" style={{marginBottom: '32px'}}>
+      <h3>登場人物</h3>
+      <div style={{display: 'flex', flexWrap: 'wrap', gap: '16px'}}>
+        {conversation.speakers.map(speaker => (
+          <div key={speaker.id} style={{
+            flex: '1',
+            minWidth: '250px',
+            padding: '16px',
+            backgroundColor: '#f8f9fa',
+            borderRadius: '8px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{display: 'flex', alignItems: 'center', marginBottom: '12px'}}>
+              <div style={{marginRight: '12px'}}>
+                {speaker.image ? (
+                  <img src={speaker.image} alt={speaker.name} style={{width: '48px', height: '48px', borderRadius: '50%'}} />
+                ) : (
+                  <DefaultAvatar />
+                )}
+              </div>
+              <div>
+                <h4 style={{margin: '0', fontSize: '1.2em'}}>{speaker.name}</h4>
+                <div style={{color: '#666', fontSize: '0.9em'}}>
+                  {speaker.age}歳 • {speaker.nationality}
+                </div>
+              </div>
+            </div>
+            <div style={{fontSize: '0.9em', color: '#444'}}>
+              <div>性格: {speaker.personality}</div>
+              <div>設定: {speaker.setting}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 
   // speakerIdから話者名を取得
@@ -75,16 +125,33 @@ const ConversationDetail = () => {
                     <div className="avatar" style={{ width:48, height:48, margin: '0 12px' }}><DefaultAvatar /></div>
                     <div className="speaker-name" style={{ fontStyle:'italic', fontSize:'0.95em', color:'#888', marginTop:4 }}>{getSpeakerName(line.speaker)}</div>
                   </div>
-                  <div style={{display:'flex', flexDirection:'column', alignItems: isLeft ? 'flex-start' : 'flex-end'}}>
-                    <div className="bubble" style={{
-                      background: '#f5f5f5',
-                      borderRadius: '16px',
-                      padding: '12px 18px',
-                      fontSize: '1.1em',
-                      maxWidth: '60vw',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                      margin: isLeft ? '0 0 0 0' : '0 0 0 auto',
-                    }}>{line.sentence || '-'}</div>
+                  <div style={{display:'flex', flexDirection:'column', alignItems: isLeft ? 'flex-start' : 'flex-end', flex: 1}}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '8px', width: '100%'}}>
+                      <div className="bubble" style={{
+                        background: '#f5f5f5',
+                        borderRadius: '16px',
+                        padding: '12px 18px',
+                        fontSize: '1.1em',
+                        maxWidth: '60vw',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                        margin: isLeft ? '0 0 0 0' : '0 0 0 auto',
+                        flex: 1
+                      }}>{line.sentence || '-'}</div>
+                      <button
+                        onClick={() => handleCopyText(line.sentence)}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '0.8em',
+                          background: '#fff',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          color: '#666'
+                        }}
+                      >
+                        コピー
+                      </button>
+                    </div>
                     <button
                       style={{ fontSize: '0.85em', marginTop: 4, padding: '2px 10px', borderRadius: '8px', border: '1px solid #bbb', background: '#fff', color: '#666', cursor: 'pointer' }}
                       onClick={() => handleToggleTranslation(idx)}
@@ -126,9 +193,16 @@ const ConversationDetail = () => {
         <h2 style={{marginBottom: '8px'}}>{conversation.title || 'タイトルなし'}</h2>
         {conversation.description && <div style={{color:'#555', marginBottom:'8px'}}>{conversation.description}</div>}
       </div>
+
+      {/* スピーカー紹介 */}
+      {renderSpeakers()}
+
+      {/* 会話内容 */}
       {renderMessages()}
-      {/* 下部: 関連Wordとセンテンス */}
+
+      {/* 下部: 関連情報 */}
       <div style={{marginTop: '40px'}}>
+        {/* 関連単語 */}
         {Array.isArray(conversation.words) && conversation.words.length > 0 && (
           <div style={{marginBottom:'24px'}}>
             <h3>関連単語</h3>
@@ -141,14 +215,41 @@ const ConversationDetail = () => {
             </div>
           </div>
         )}
-        {Array.isArray(conversation.sentences) && conversation.sentences.length > 0 && (
-          <div>
-            <h3>関連センテンス</h3>
+
+        {/* 関連イディオム */}
+        {Array.isArray(conversation.idioms) && conversation.idioms.length > 0 && (
+          <div style={{marginBottom:'24px'}}>
+            <h3>関連イディオム</h3>
             <div style={{display:'flex', flexWrap:'wrap', gap:'12px'}}>
-              {conversation.sentences.map((s, i) => (
-                <div key={s.id || s.sentence || i} style={{border:'1px solid #ddd', borderRadius:'8px', padding:'10px 16px', background:'#f5f5f5', minWidth:'120px'}}>
-                  <div style={{fontWeight:'bold', fontSize:'1.05em', marginBottom:'4px'}}>{s.sentence}</div>
-                  {s.translation && <div style={{color:'#888', fontSize:'0.95em'}}>{s.translation}</div>}
+              {conversation.idioms.map((idiom, i) => (
+                <div key={idiom.id || i} style={{
+                  border:'1px solid #ddd',
+                  borderRadius:'8px',
+                  padding:'10px 16px',
+                  background:'#f5f5f5',
+                  minWidth:'120px'
+                }}>
+                  <div style={{fontWeight:'bold', fontSize:'1.05em'}}>{idiom.idiom}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 関連文法 */}
+        {Array.isArray(conversation.grammars) && conversation.grammars.length > 0 && (
+          <div style={{marginBottom:'24px'}}>
+            <h3>関連文法</h3>
+            <div style={{display:'flex', flexWrap:'wrap', gap:'12px'}}>
+              {conversation.grammars.map((grammar, i) => (
+                <div key={grammar.id || i} style={{
+                  border:'1px solid #ddd',
+                  borderRadius:'8px',
+                  padding:'10px 16px',
+                  background:'#f5f5f5',
+                  minWidth:'120px'
+                }}>
+                  <div style={{fontWeight:'bold', fontSize:'1.05em'}}>{grammar.pattern}</div>
                 </div>
               ))}
             </div>
