@@ -30,7 +30,9 @@ const IdiomList = ({
   const fetchIdioms = async () => {
     try {
       setIsLoading(true);
-      const response = await apiClient.idioms.getLearningList();
+      const response = isMyPage
+        ? await apiClient.idioms.getLearningList()
+        : await apiClient.idioms.getList();
       
       if (response && response.content && Array.isArray(response.content)) {
         const transformedIdioms = response.content.map(item => {
@@ -65,21 +67,21 @@ const IdiomList = ({
     }
   };
 
-  // お気に入りの更新（イディオムの追加/削除を兼ねる）
+  // お気に入りの更新（学習開始/終了を兼ねる）
   const handleFavoriteToggle = async (idiomId, currentIsFavorite) => {
     if (!user) return;
     
     try {
       if (currentIsFavorite) {
-        // イディオムを削除
-        await apiClient.idioms.removeIdiom(idiomId);
+        // お気に入り解除
+        await apiClient.idioms.toggleFavorite(idiomId);
       } else {
-        // イディオムを追加
-        await apiClient.idioms.addIdiom(idiomId);
+        // お気に入り登録
+        await apiClient.idioms.learn(idiomId);
       }
       fetchIdioms();
     } catch (error) {
-      console.error('イディオムの追加/削除エラー:', error);
+      console.error('イディオムの学習状態更新エラー:', error);
       alert(error.message);
     }
   };
@@ -195,7 +197,7 @@ const IdiomList = ({
                 <th>イディオム</th>
                 <th>意味</th>
                 <th>例文</th>
-                <th>追加/削除</th>
+                <th>学習</th>
               </tr>
             </thead>
             <tbody>
@@ -210,10 +212,10 @@ const IdiomList = ({
                   </td>
                   <td data-label="意味">{idiom.meaning || '-'}</td>
                   <td data-label="例文" className="desktop-only">{idiom.example || '-'}</td>
-                  <td data-label="追加/削除">
+                  <td data-label="学習">
                     <FavoriteButton
-                      isFavorite={isMyPage}
-                      onClick={() => handleFavoriteToggle(idiom.id, isMyPage)}
+                      isFavorite={isMyPage ? idiom.isFavorite : false}
+                      onClick={() => handleFavoriteToggle(idiom.id, isMyPage ? idiom.isFavorite : false)}
                     />
                   </td>
                 </tr>

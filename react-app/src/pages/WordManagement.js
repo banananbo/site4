@@ -164,12 +164,20 @@ const WordManagement = () => {
             />
           </>
         ) : (
-          <WordList
-            isMyPage={false}
-            onWordClick={handleWordClick}
-            title="みんなの登録単語リスト"
-            user={user}
-          />
+          <>
+            <WordList
+              isMyPage={false}
+              onWordClick={handleWordClick}
+              title="みんなの登録単語リスト"
+              user={user}
+            />
+
+            <IdiomList
+              isMyPage={false}
+              title="みんなの登録イディオムリスト"
+              user={user}
+            />
+          </>
         )}
       </div>
       
