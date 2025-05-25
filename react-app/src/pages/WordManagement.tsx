@@ -3,16 +3,16 @@ import axios from 'axios';
 import { AuthContext } from '../contexts/AuthContext';
 import TextInputForm from '../components/TextInputForm';
 import LearningStatusSelector from '../components/LearningStatusSelector';
+import { apiService } from '../api/apiService';
 import './WordManagement.css';
-import { apiClient } from '../api/apiClient';
 
 const WordManagement = () => {
   const [words, setWords] = useState([]);
   const [allWords, setAllWords] = useState([]);
   const [sentences, setSentences] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [allWordsLoading, setAllWordsLoading] = useState(false);
-  const [sentencesLoading, setSentencesLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [allWordsLoading, setAllWordsLoading] = useState(true);
+  const [sentencesLoading, setSentencesLoading] = useState(true);
   const [error, setError] = useState('');
   const [allWordsError, setAllWordsError] = useState('');
   const [sentencesError, setSentencesError] = useState('');
@@ -27,29 +27,20 @@ const WordManagement = () => {
   const [showSentenceModal, setShowSentenceModal] = useState(false); // センテンスモーダル表示状態
   const [sentenceDetailsLoading, setSentenceDetailsLoading] = useState(false); // センテンス詳細読み込み状態
   
-  const { user, loading: authLoading } = useContext(AuthContext);
+  const { user, getAccessToken } = useContext(AuthContext);
   const [updateStatusLoading, setUpdateStatusLoading] = useState(false);
   const [expandedRows, setExpandedRows] = useState(new Set());
-
-  useEffect(() => {
-    // 認証の準備が完了してからデータを取得
-    if (!authLoading && user) {
-      if (activeTab === 'mypage') {
-        fetchUserWords();
-        fetchUserSentences();
-      } else if (activeTab === 'everyone' && allWords.length === 0) {
-        fetchAllWords();
-      }
-    }
-  }, [authLoading, user, activeTab]); // authLoading, user, activeTabの変更を監視
 
   // ユーザーの単語一覧を取得
   const fetchUserWords = async () => {
     try {
       setLoading(true);
+      const token = await getAccessToken();
+      apiService.setToken(token);
+      
       console.log('ユーザー単語リスト取得リクエスト');
-      const response = await apiClient.words.getUserWords();
-      console.log('API response new:', response);
+      const response = await apiService.getUserWords();
+      console.log('API response:', response);
       
       // レスポンスデータの形式をチェック
       if (response && Array.isArray(response)) {
@@ -76,16 +67,26 @@ const WordManagement = () => {
   const fetchAllWords = async () => {
     try {
       setAllWordsLoading(true);
+      const token = await getAccessToken();
+      
+      // APIエンドポイントのURL
+      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/words/all`;
+      
+      // 認証トークンをヘッダーに設定
+      const headers = {
+        Authorization: `Bearer ${token}`
+      };
+      
       console.log('全単語リスト取得リクエスト');
-      const response = await apiClient.words.getAllWords();
-      console.log('API response (all words):', response);
+      const response = await axios.get(apiUrl, { headers });
+      console.log('API response (all words):', response.data);
       
       // レスポンスデータの形式をチェック
-      if (response && Array.isArray(response)) {
-        setAllWords(response);
-      } else if (response && typeof response === 'object') {
+      if (response.data && Array.isArray(response.data)) {
+        setAllWords(response.data);
+      } else if (response.data && typeof response.data === 'object') {
         // オブジェクトの場合は、配列プロパティを探す
-        const wordsArray = response.items || response.words || response.content || [];
+        const wordsArray = response.data.items || response.data.words || response.data.content || [];
         setAllWords(Array.isArray(wordsArray) ? wordsArray : []);
       } else {
         setAllWords([]);
@@ -105,13 +106,24 @@ const WordManagement = () => {
   const fetchWordDetails = async (wordId) => {
     try {
       setDetailsLoading(true);
+      const token = await getAccessToken();
+      
+      // APIエンドポイントのURL
+      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/words/${wordId}`;
+      
+      // 認証トークンをヘッダーに設定
+      const headers = {
+        Authorization: `Bearer ${token}`
+      };
+      
       console.log('単語詳細取得リクエスト:', { wordId });
-      const response = await apiClient.words.getWordDetails(wordId);
-      console.log('API response (word details):', response);
+      const response = await axios.get(apiUrl, { headers });
+      console.log('API response (word details):', response.data);
       
       // レスポンスデータをステートに設定
-      setSelectedWordDetails(response);
-      return response;
+      setSelectedWordDetails(response.data);
+      
+      return response.data;
     } catch (err) {
       console.error('単語詳細取得エラー:', err);
       // エラーが発生した場合は、基本情報のみの表示用にnullを設定せず、選択された単語をそのまま使用
@@ -125,16 +137,23 @@ const WordManagement = () => {
   // 単語をユーザーに関連付ける
   const addWordToUser = async (wordId) => {
     try {
-      console.log('単語追加リクエスト:', { wordId });
-      const response = await apiClient.words.addWord(wordId);
-      console.log('単語追加レスポンス:', response);
+      const token = await getAccessToken();
       
-      if (response && response.success) {
+      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/words/user/add`;
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+      
+      const response = await axios.post(apiUrl, { wordId }, { headers });
+      console.log('単語追加レスポンス:', response.data);
+      
+      if (response.data && response.data.success) {
         // 成功したら単語一覧を再取得
         fetchUserWords();
         return true;
       } else {
-        console.error('単語追加エラー:', response?.message || '不明なエラー');
+        console.error('単語追加エラー:', response.data?.message || '不明なエラー');
         return false;
       }
     } catch (err) {
@@ -146,16 +165,23 @@ const WordManagement = () => {
   // 単語の関連付けを削除
   const removeWordFromUser = async (wordId) => {
     try {
-      console.log('単語削除リクエスト:', { wordId });
-      const response = await apiClient.words.removeWord(wordId);
-      console.log('単語削除レスポンス:', response);
+      const token = await getAccessToken();
       
-      if (response && response.success) {
+      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/words/user/remove`;
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+      
+      const response = await axios.post(apiUrl, { wordId }, { headers });
+      console.log('単語削除レスポンス:', response.data);
+      
+      if (response.data && response.data.success) {
         // 成功したら単語一覧を再取得
         fetchUserWords();
         return true;
       } else {
-        console.error('単語削除エラー:', response?.message || '不明なエラー');
+        console.error('単語削除エラー:', response.data?.message || '不明なエラー');
         return false;
       }
     } catch (err) {
@@ -168,16 +194,26 @@ const WordManagement = () => {
   const fetchUserSentences = async () => {
     try {
       setSentencesLoading(true);
+      const token = await getAccessToken();
+      
+      // APIエンドポイントのURL
+      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/sentences`;
+      
+      // 認証トークンをヘッダーに設定
+      const headers = {
+        Authorization: `Bearer ${token}`
+      };
+      
       console.log('ユーザーセンテンスリスト取得リクエスト');
-      const response = await apiClient.sentences.getList();
-      console.log('API response (sentences):', response);
+      const response = await axios.get(apiUrl, { headers });
+      console.log('API response (sentences):', response.data);
       
       // レスポンスデータの形式をチェック
-      if (response && Array.isArray(response)) {
-        setSentences(response);
-      } else if (response && typeof response === 'object') {
+      if (response.data && Array.isArray(response.data)) {
+        setSentences(response.data);
+      } else if (response.data && typeof response.data === 'object') {
         // オブジェクトの場合は、配列プロパティを探す
-        const sentencesArray = response.items || response.sentences || response.content || [];
+        const sentencesArray = response.data.items || response.data.sentences || response.data.content || [];
         setSentences(Array.isArray(sentencesArray) ? sentencesArray : []);
       } else {
         setSentences([]);
@@ -196,10 +232,20 @@ const WordManagement = () => {
   // センテンスをユーザーから削除
   const removeSentenceFromUser = async (sentenceId) => {
     try {
-      console.log('センテンス削除リクエスト:', { sentenceId });
-      await apiClient.sentences.remove(sentenceId);
+      const token = await getAccessToken();
       
-      // 成功したらセンテンスリストを更新
+      // APIエンドポイントのURL
+      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/sentences/${sentenceId}/remove`;
+      
+      // 認証トークンをヘッダーに設定
+      const headers = {
+        Authorization: `Bearer ${token}`
+      };
+      
+      console.log('センテンス削除リクエスト:', { sentenceId });
+      await axios.delete(apiUrl, { headers });
+      
+      // 成功したら単語リストを更新
       fetchUserSentences();
     } catch (err) {
       console.error('センテンス削除エラー:', err);
@@ -210,7 +256,7 @@ const WordManagement = () => {
   // タブ切り替え関数
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    if (tab === 'everyone' && allWords.length === 0 && !authLoading) {
+    if (tab === 'everyone' && allWords.length === 0) {
       fetchAllWords();
     }
   };
@@ -262,8 +308,25 @@ const WordManagement = () => {
     
     setUpdateStatusLoading(true);
     try {
-      console.log('学習状態更新リクエスト:', { wordId, status });
-      const updatedWord = await apiClient.words.updateLearningStatus(wordId, status);
+      const token = await getAccessToken();
+      
+      // APIエンドポイントのURL（userIdパラメータを削除）
+      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/words/${wordId}/learning-status?status=${status}`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '学習状態の更新に失敗しました');
+      }
+      
+      const updatedWord = await response.json();
       
       // 単語リストを更新（アクティブなタブに応じて更新する変数を選択）
       if (activeTab === 'mypage') {
@@ -296,37 +359,54 @@ const WordManagement = () => {
     }
   };
 
-  // センテンスの学習状態を更新する関数
-  const updateSentenceLearningStatus = async (sentenceId, status) => {
-    if (!user) return;
-    
-    setUpdateStatusLoading(true);
-    try {
-      console.log('センテンス学習状態更新リクエスト:', { sentenceId, status });
-      const updatedSentence = await apiClient.sentences.updateLearningStatus(sentenceId, status);
+    // 学習状態を更新する関数
+    const updateSentenceLearningStatus = async (sentenceId, status) => {
+      if (!user) return;
       
-      // センテンスリストを更新
-      const updatedSentences = sentences.map(sentence => 
-        sentence.id === sentenceId ? { ...sentence, learningStatus: updatedSentence.learningStatus } : sentence
-      );
-      setSentences(updatedSentences);
+      setUpdateStatusLoading(true);
+      try {
+        const token = await getAccessToken();
+        
+        // APIエンドポイントのURL（userIdパラメータを削除）
+        const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/sentences/${sentenceId}/learning-status?status=${status}`;
+        
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || '学習状態の更新に失敗しました');
+        }
+        
+        const updatedSentence = await response.json();
+        
+        // センテンスリストを更新
+        const updatedSentences = sentences.map(sentence => 
+          sentence.id === sentenceId ? { ...sentence, learningStatus: updatedSentence.learningStatus } : sentence
+        );
+        setSentences(updatedSentences);
 
-      console.log('センテンスリスト更新 updatedSentence:', updatedSentence);
-      console.log('センテンスリスト更新 selectedSentence:', selectedSentence);
-      console.log('センテンスリスト更新 sentenceId:', sentenceId);
-      
-      // モーダル内のセンテンスデータを更新
-      if (selectedSentence && selectedSentence.id === sentenceId) {
-        setSelectedSentence({ ...selectedSentence, learningStatus: updatedSentence.learningStatus });
+        console.log('センテンスリスト更新 updatedSentence:', updatedSentence);
+        console.log('センテンスリスト更新 selectedSentence:', selectedSentence);
+        console.log('センテンスリスト更新 sentenceId:', sentenceId);
+        
+        // モーダル内のセンテンスデータを更新
+        if (selectedSentence && selectedSentence.id === sentenceId) {
+          setSelectedSentence({ ...selectedSentence, learningStatus: updatedSentence.learningStatus });
+        }
+        
+      } catch (error) {
+        console.error('学習状態の更新エラー:', error);
+        alert(error.message);
+      } finally {
+        setUpdateStatusLoading(false);
       }
-      
-    } catch (error) {
-      console.error('学習状態の更新エラー:', error);
-      alert(error.message);
-    } finally {
-      setUpdateStatusLoading(false);
-    }
-  };
+    };
 
   // 単語詳細モーダル
   const WordDetailModal = () => {
@@ -612,6 +692,13 @@ const WordManagement = () => {
       </table>
     );
   };
+
+  useEffect(() => {
+    if (user) {
+      fetchUserWords();
+      fetchUserSentences();
+    }
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="word-management-container">

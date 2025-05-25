@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { apiClient } from '../api/apiClient';
 
 // 認証コンテキストの作成
 export const AuthContext = createContext();
@@ -16,6 +17,7 @@ export const AuthProvider = ({ children }) => {
     if (storedToken) {
       setToken(storedToken);
       setIsAuthenticated(true);
+      apiClient.setAuthToken(storedToken);
       
       // トークンからユーザー情報を抽出してセット
       try {
@@ -31,6 +33,11 @@ export const AuthProvider = ({ children }) => {
     }
     setLoading(false);
   }, []);
+
+  // トークンの変更を監視してapiClientに設定
+  useEffect(() => {
+    apiClient.setAuthToken(token);
+  }, [token]);
 
   // ログイン処理
   const login = () => {
@@ -48,15 +55,7 @@ export const AuthProvider = ({ children }) => {
     try {
       // ログアウトAPIを呼び出し
       const currentToken = token;
-      let url = `${process.env.REACT_APP_API_URL}/api/auth/logout`;
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${currentToken}`
-        }
-      });
+      await apiClient.auth.logout();
       
       // ローカルストレージからトークンを削除
       setToken(null);
@@ -64,19 +63,8 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       localStorage.removeItem('token');
       
-      if (response.ok) {
-        const data = await response.json();
-        // Auth0のログアウトURLにリダイレクト
-        if (data && data.logoutUrl) {
-          window.location.href = data.logoutUrl;
-        } else {
-          // ログアウトURLがない場合はホームにリダイレクト
-          window.location.href = "/";
-        }
-      } else {
-        // エラー時はホームにリダイレクト
-        window.location.href = "/";
-      }
+      // Auth0のログアウトURLにリダイレクト
+      window.location.href = "/";
     } catch (error) {
       console.error('ログアウトエラー:', error);
       // エラーが発生した場合もホームにリダイレクト
