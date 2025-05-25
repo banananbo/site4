@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { apiClient } from '../api/apiClient';
-import TextInputForm from '../components/TextInputForm';
+import IdiomList from '../components/Idiom/IdiomList';
 import LearningStatusSelector from '../components/LearningStatusSelector';
 import './WordManagement.css'; // 同じスタイルを使用
 
@@ -275,53 +275,6 @@ const IdiomsManagement = () => {
     );
   };
 
-  // イディオム一覧テーブルのレンダリング
-  const renderIdiomTable = (idiomList, isMyPage) => {
-    return (
-      <table>
-        <thead>
-          <tr>
-            <th>イディオム</th>
-            <th>意味</th>
-            <th>例文</th>
-            {isMyPage ? <th>状態</th> : <th>追加</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {idiomList.map(idiom => (
-            <tr key={idiom.id}>
-              <td className="word-cell" onClick={() => handleIdiomClick(idiom)}>
-                <span className="clickable-word">{idiom.idiom}</span>
-              </td>
-              <td>{idiom.meaning || '-'}</td>
-              <td className="example-sentence">{idiom.example || '-'}</td>
-              <td>
-                {isMyPage ? (
-                  <div className="status-container">
-                    <span className={`status status-${idiom.learningStatus?.toLowerCase() || 'new'}`}>
-                      {idiom.learningStatus === 'NEW' && '新規'}
-                      {idiom.learningStatus === 'LEARNING' && '学習中'}
-                      {idiom.learningStatus === 'MASTERED' && '習得済み'}
-                      {!idiom.learningStatus && '新規'}
-                    </span>
-                    {idiom.isFavorite && <span className="favorite-badge">★</span>}
-                  </div>
-                ) : (
-                  <button 
-                    className="action-button add-button" 
-                    onClick={() => addIdiomToUser(idiom.id)}
-                  >
-                    追加
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    );
-  };
-
   useEffect(() => {
     if (user) {
       fetchUserIdioms();
@@ -351,37 +304,26 @@ const IdiomsManagement = () => {
       
       <div className="word-list-section">
         {activeTab === 'mypage' ? (
-          <>
-            <h2>{user?.name || 'あなた'}の学習中イディオムリスト</h2>
-            
-            {loading ? (
-              <div className="loading">読み込み中...</div>
-            ) : error ? (
-              <div className="error-message">{error}</div>
-            ) : !idioms || idioms.length === 0 ? (
-              <div className="empty-list">学習中のイディオムはありません</div>
-            ) : (
-              <div className="word-list">
-                {renderIdiomTable(idioms, true)}
-              </div>
-            )}
-          </>
+          <IdiomList
+            idioms={idioms}
+            isLoading={loading}
+            error={error}
+            isMyPage={true}
+            onIdiomClick={handleIdiomClick}
+            title={`${user?.name || 'あなた'}の学習中イディオムリスト`}
+            onRefresh={fetchUserIdioms}
+          />
         ) : (
-          <>
-            <h2>イディオム一覧</h2>
-            
-            {allIdiomsLoading ? (
-              <div className="loading">読み込み中...</div>
-            ) : allIdiomsError ? (
-              <div className="error-message">{allIdiomsError}</div>
-            ) : !allIdioms || allIdioms.length === 0 ? (
-              <div className="empty-list">イディオムデータがありません</div>
-            ) : (
-              <div className="word-list">
-                {renderIdiomTable(allIdioms, false)}
-              </div>
-            )}
-          </>
+          <IdiomList
+            idioms={allIdioms}
+            isLoading={allIdiomsLoading}
+            error={allIdiomsError}
+            isMyPage={false}
+            onIdiomClick={handleIdiomClick}
+            onAddIdiom={addIdiomToUser}
+            title="イディオム一覧"
+            onRefresh={fetchAllIdioms}
+          />
         )}
       </div>
       

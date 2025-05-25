@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import LearningStatusSelector from '../LearningStatusSelector';
 
 const WordList = ({
@@ -14,6 +14,42 @@ const WordList = ({
   title,
   onRefresh,
 }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // 検索フィルター機能
+  const filteredWords = useMemo(() => {
+    if (!searchQuery.trim()) return words;
+    
+    const query = searchQuery.toLowerCase();
+    return words.filter(word => 
+      word.word.toLowerCase().includes(query) ||
+      (word.meaning && word.meaning.toLowerCase().includes(query)) ||
+      (word.partOfSpeech && word.partOfSpeech.toLowerCase().includes(query))
+    );
+  }, [words, searchQuery]);
+
+  const renderSearchBox = () => {
+    return (
+      <div className="search-box">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="単語、意味、品詞で検索..."
+          className="search-input"
+        />
+        {searchQuery && (
+          <button
+            className="search-clear-button"
+            onClick={() => setSearchQuery('')}
+          >
+            ×
+          </button>
+        )}
+      </div>
+    );
+  };
+
   const renderWordTable = () => {
     return (
       <table>
@@ -27,7 +63,7 @@ const WordList = ({
           </tr>
         </thead>
         <tbody>
-          {words.map(word => (
+          {filteredWords.map(word => (
             <tr key={word.id}>
               <td className="word-cell" onClick={() => onWordClick(word)} data-label="単語">
                 <span className="clickable-word">{word.word}</span>
@@ -90,6 +126,8 @@ const WordList = ({
           更新
         </button>
       </h2>
+
+      {renderSearchBox()}
       
       {isLoading ? (
         <div className="loading">読み込み中...</div>
@@ -100,6 +138,9 @@ const WordList = ({
       ) : (
         <div className="word-list">
           {renderWordTable()}
+          {filteredWords.length === 0 && (
+            <div className="empty-list">検索条件に一致する単語はありません</div>
+          )}
         </div>
       )}
     </div>

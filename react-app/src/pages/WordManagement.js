@@ -5,6 +5,7 @@ import TextInputForm from '../components/TextInputForm';
 import LearningStatusSelector from '../components/LearningStatusSelector';
 import WordList from '../components/Word/WordList';
 import SentenceList from '../components/Sentence/SentenceList';
+import IdiomList from '../components/Idiom/IdiomList';
 import './WordManagement.css';
 import { apiClient } from '../api/apiClient';
 
@@ -40,17 +41,25 @@ const WordManagement = () => {
   const [updateStatusLoading, setUpdateStatusLoading] = useState(false);
   const [expandedRows, setExpandedRows] = useState(new Set());
 
+  // イディオム関連のstate
+  const [idioms, setIdioms] = useState([]);
+  const [idiomsLoading, setIdiomsLoading] = useState(false);
+  const [idiomsError, setIdiomsError] = useState('');
+  const [selectedIdiom, setSelectedIdiom] = useState(null);
+  const [showIdiomModal, setShowIdiomModal] = useState(false);
+
   useEffect(() => {
     // 認証の準備が完了してからデータを取得
     if (!authLoading && user) {
       if (activeTab === 'mypage') {
         fetchUserWords();
         fetchUserSentences();
+        fetchUserIdioms();
       } else if (activeTab === 'everyone' && allWords.length === 0) {
         fetchAllWords();
       }
     }
-  }, [authLoading, user, activeTab]); // authLoading, user, activeTabの変更を監視
+  }, [authLoading, user, activeTab]);
 
   // ユーザーの単語一覧を取得
   const fetchUserWords = async () => {
@@ -214,6 +223,109 @@ const WordManagement = () => {
       console.error('センテンス削除エラー:', err);
       alert('センテンスの削除に失敗しました。');
     }
+  };
+
+  // ユーザーのイディオム一覧を取得
+  const fetchUserIdioms = async () => {
+    try {
+      setIdiomsLoading(true);
+      const response = await apiClient.idioms.getLearningList();
+      
+      if (response && response.content && Array.isArray(response.content)) {
+        const transformedIdioms = response.content.map(item => {
+          if (item.idiom && item.userIdiom) {
+            return {
+              ...item.idiom,
+              id: item.idiom.id,
+              idiom: item.idiom.idiom,
+              meaning: item.idiom.meaning,
+              example: item.idiom.example,
+              learningStatus: item.userIdiom.learningStatus,
+              isFavorite: item.userIdiom.isFavorite
+            };
+          } else {
+            return item;
+          }
+        });
+        setIdioms(transformedIdioms);
+      } else if (Array.isArray(response)) {
+        setIdioms(response);
+      } else {
+        setIdioms([]);
+      }
+      
+      setIdiomsError('');
+    } catch (err) {
+      console.error('イディオムリスト取得エラー:', err);
+      setIdiomsError('イディオムリストの取得に失敗しました。');
+      setIdioms([]);
+    } finally {
+      setIdiomsLoading(false);
+    }
+  };
+
+  // イディオムをユーザーに関連付ける
+  const addIdiomToUser = async (idiomId) => {
+    try {
+      await apiClient.idioms.learn(idiomId);
+      fetchUserIdioms();
+      return true;
+    } catch (err) {
+      console.error('イディオム追加エラー:', err);
+      return false;
+    }
+  };
+
+  // イディオムクリック時の処理
+  const handleIdiomClick = async (idiom) => {
+    setSelectedIdiom(idiom);
+    setShowIdiomModal(true);
+  };
+
+  // イディオムモーダルを閉じる
+  const closeIdiomModal = () => {
+    setShowIdiomModal(false);
+    setSelectedIdiom(null);
+  };
+
+  // イディオムモーダル
+  const IdiomDetailModal = () => {
+    if (!selectedIdiom) return null;
+
+    return (
+      <div className="modal-overlay" onClick={(e) => {
+        if (e.target.className === 'modal-overlay') closeIdiomModal();
+      }}>
+        <div className="modal-content">
+          <button className="modal-close" onClick={closeIdiomModal}>×</button>
+          <div className="word-detail-card">
+            <h3 className="word-title">{selectedIdiom.idiom}</h3>
+            <div className="word-info">
+              <div className="info-row">
+                <span className="info-label">意味:</span>
+                <span className="info-value">{selectedIdiom.meaning || '-'}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">例文:</span>
+                <span className="info-value">{selectedIdiom.example || '-'}</span>
+              </div>
+              
+              {activeTab === 'mypage' && (
+                <div className="status-container">
+                  <span className={`status status-${selectedIdiom.learningStatus?.toLowerCase() || 'new'}`}>
+                    {selectedIdiom.learningStatus === 'NEW' && '新規'}
+                    {selectedIdiom.learningStatus === 'LEARNING' && '学習中'}
+                    {selectedIdiom.learningStatus === 'MASTERED' && '習得済み'}
+                    {!selectedIdiom.learningStatus && '新規'}
+                  </span>
+                  {selectedIdiom.isFavorite && <span className="favorite-badge">★</span>}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // タブ切り替え関数
@@ -531,6 +643,7 @@ const WordManagement = () => {
         <TextInputForm onInputProcessed={() => {
           fetchUserWords();
           fetchUserSentences();
+          fetchUserIdioms();
         }} />
       </div>
       
@@ -567,6 +680,17 @@ const WordManagement = () => {
               onRefresh={fetchUserWords}
             />
 
+
+            <IdiomList
+              idioms={idioms}
+              isLoading={idiomsLoading}
+              error={idiomsError}
+              isMyPage={true}
+              onIdiomClick={handleIdiomClick}
+              title={`${user?.name || 'あなた'}の学習中イディオムリスト`}
+              onRefresh={fetchUserIdioms}
+            />
+
             <SentenceList
               sentences={sentences}
               isLoading={sentencesLoading}
@@ -595,6 +719,7 @@ const WordManagement = () => {
       
       {showModal && <WordDetailModal />}
       {showSentenceModal && <SentenceDetailModal />}
+      {showIdiomModal && <IdiomDetailModal />}
     </div>
   );
 };
