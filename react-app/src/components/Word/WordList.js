@@ -1,20 +1,19 @@
-import React, { useState, useMemo } from 'react';
-import LearningStatusSelector from '../LearningStatusSelector';
+import React, { useState, useMemo, useEffect } from 'react';
+import { apiClient } from '../../api/apiClient';
+import FavoriteButton from '../FavoriteButton';
+import './WordList.css';
 
 const WordList = ({
-  words,
-  isLoading,
-  error,
   isMyPage,
   onWordClick,
-  onAddWord,
-  onRemoveWord,
-  expandedRows,
-  onToggleRow,
   title,
-  onRefresh,
+  user,
 }) => {
+  const [words, setWords] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [expandedRows, setExpandedRows] = useState(new Set());
 
   // 検索フィルター機能
   const filteredWords = useMemo(() => {
@@ -27,6 +26,72 @@ const WordList = ({
       (word.partOfSpeech && word.partOfSpeech.toLowerCase().includes(query))
     );
   }, [words, searchQuery]);
+
+  // データ取得
+  const fetchWords = async () => {
+    try {
+      setIsLoading(true);
+      const response = isMyPage 
+        ? await apiClient.words.getUserWords()
+        : await apiClient.words.getAllWords();
+
+      if (response && Array.isArray(response)) {
+        setWords(response);
+      } else if (response && typeof response === 'object') {
+        const wordsArray = response.items || response.words || response.content || [];
+        setWords(Array.isArray(wordsArray) ? wordsArray : []);
+      } else {
+        setWords([]);
+      }
+      
+      setError('');
+    } catch (err) {
+      console.error('単語リスト取得エラー:', err);
+      setError('単語リストの取得に失敗しました。');
+      setWords([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // お気に入りの更新（単語の追加/削除を兼ねる）
+  const handleFavoriteToggle = async (wordId, currentIsFavorite) => {
+    if (!user) return;
+    
+    try {
+      if (currentIsFavorite) {
+        // 単語を削除
+        await apiClient.words.removeWord(wordId);
+      } else {
+        // 単語を追加
+        await apiClient.words.addWord(wordId);
+      }
+      fetchWords();
+    } catch (error) {
+      console.error('単語の追加/削除エラー:', error);
+      alert(error.message);
+    }
+  };
+
+  // 行の展開/折りたたみ
+  const toggleRowExpand = (wordId) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(wordId)) {
+        newSet.delete(wordId);
+      } else {
+        newSet.add(wordId);
+      }
+      return newSet;
+    });
+  };
+
+  // 初回マウント時とisMyPageの変更時にデータを取得
+  useEffect(() => {
+    if (user) {
+      fetchWords();
+    }
+  }, [user, isMyPage]);
 
   const renderSearchBox = () => {
     return (
@@ -56,57 +121,76 @@ const WordList = ({
         <thead>
           <tr>
             <th>単語</th>
-            <th className="desktop-only">品詞</th>
             <th className="desktop-only">例文</th>
             <th>意味</th>
-            {isMyPage ? <th>操作</th> : <th>追加</th>}
+            <th>追加/削除</th>
           </tr>
         </thead>
         <tbody>
           {filteredWords.map(word => (
-            <tr key={word.id}>
-              <td className="word-cell" onClick={() => onWordClick(word)} data-label="単語">
-                <span className="clickable-word">{word.word}</span>
-                <button 
-                  className="toggle-details-button mobile-only"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleRow(word.id);
-                  }}
-                >
-                  {expandedRows.has(word.id) ? '詳細を隠す' : '詳細を表示'}
-                </button>
-              </td>
-              <td data-label="意味">{word.meaning || '-'}</td>
-              <td className={`details-cell ${expandedRows.has(word.id) ? 'expanded' : ''}`} data-label="品詞">
-                {word.partOfSpeech || '-'}
-              </td>
-              <td className={`details-cell example-sentence ${expandedRows.has(word.id) ? 'expanded' : ''}`} data-label="例文">
-                {word.sentences && word.sentences.length > 0 ? (
-                  <div>
-                    <div className="sentence">{word.sentences[0].sentence}</div>
-                    <div className="translation">{word.sentences[0].translation}</div>
+            <React.Fragment key={word.id}>
+              <tr className={expandedRows.has(word.id) ? 'expanded' : ''}>
+                <td className="word-cell" onClick={() => onWordClick(word)} data-label="単語">
+                  <div className="word-info-container">
+                    <span className="clickable-word">{word.word}</span>
+                    {word.partOfSpeech && (
+                      <span className="part-of-speech">{word.partOfSpeech}</span>
+                    )}
+                    <button 
+                      className="expand-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleRowExpand(word.id);
+                      }}
+                    >
+                      {expandedRows.has(word.id) ? '▼' : '▶'}
+                    </button>
                   </div>
-                ) : '例文なし'}
-              </td>
-              <td data-label={isMyPage ? "操作" : "追加"} className={`${expandedRows.has(word.id) ? 'expanded' : ''}`}>
-                {isMyPage ? (
-                  <button 
-                    className="action-button remove-button" 
-                    onClick={() => onRemoveWord(word.id)}
-                  >
-                    削除
-                  </button>
-                ) : (
-                  <button 
-                    className="action-button add-button" 
-                    onClick={() => onAddWord(word.id)}
-                  >
-                    追加
-                  </button>
-                )}
-              </td>
-            </tr>
+                </td>
+                <td className="details-cell example-sentence" data-label="例文">
+                  {word.sentences && word.sentences.length > 0 ? (
+                    <div>
+                      <div className="sentence">{word.sentences[0].sentence}</div>
+                      <div className="translation">{word.sentences[0].translation}</div>
+                    </div>
+                  ) : '例文なし'}
+                </td>
+                <td data-label="意味">{word.meaning || '-'}</td>
+                <td data-label="追加/削除">
+                  <FavoriteButton
+                    isFavorite={isMyPage}
+                    onClick={() => handleFavoriteToggle(word.id, isMyPage)}
+                  />
+                </td>
+              </tr>
+              {expandedRows.has(word.id) && (
+                <tr className="expanded-content">
+                  <td colSpan={4}>
+                    <div className="expanded-details">
+                      <h4>例文一覧</h4>
+                      {word.sentences && word.sentences.length > 0 ? (
+                        <ul>
+                          {word.sentences.map((sentence, index) => (
+                            <li key={index}>
+                              <div className="sentence">{sentence.sentence}</div>
+                              <div className="translation">{sentence.translation}</div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p>例文はありません</p>
+                      )}
+                      {word.note && (
+                        <>
+                          <h4>メモ</h4>
+                          <p>{word.note}</p>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
           ))}
         </tbody>
       </table>
@@ -119,7 +203,7 @@ const WordList = ({
         {title}
         <button 
           className="refresh-button" 
-          onClick={onRefresh} 
+          onClick={fetchWords} 
           disabled={isLoading}
         >
           <RefreshIcon />
