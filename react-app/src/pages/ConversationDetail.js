@@ -32,14 +32,47 @@ const ConversationDetail = () => {
   }, [id, authLoading, user]);
 
   const handleCopyText = (text) => {
-    navigator.clipboard.writeText(text)
-      .then(() => {
-        // コピー成功時の処理（必要に応じてトースト通知などを追加）
-        console.log('テキストをコピーしました');
-      })
-      .catch(err => {
-        console.error('コピーに失敗しました:', err);
-      });
+    // モダンブラウザのClipboard API
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          console.log('テキストをコピーしました');
+        })
+        .catch(err => {
+          console.error('コピーに失敗しました:', err);
+          fallbackCopyText(text);
+        });
+    } else {
+      // フォールバックメソッド
+      fallbackCopyText(text);
+    }
+  };
+
+  // フォールバックとしてのコピー機能
+  const fallbackCopyText = (text) => {
+    try {
+      // 一時的なテキストエリアを作成
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      
+      // テキストエリアをビューポートの外に配置
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      
+      // テキストを選択してコピー
+      textArea.focus();
+      textArea.select();
+      document.execCommand('copy');
+      
+      // テキストエリアを削除
+      textArea.remove();
+      
+      console.log('テキストをコピーしました（フォールバック）');
+    } catch (err) {
+      console.error('コピーに失敗しました（フォールバック）:', err);
+    }
   };
 
   if (loading) return <div>読み込み中...</div>;
