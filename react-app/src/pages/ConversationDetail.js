@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
-
-const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/conversations`;
+import { apiClient } from '../api/apiClient';
 
 const ConversationDetail = () => {
   const { id } = useParams();
-  const { getAccessToken, loading: authLoading } = useContext(AuthContext);
+  const { user, loading: authLoading } = useContext(AuthContext);
   const [conversation, setConversation] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -14,29 +13,23 @@ const ConversationDetail = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || !user) return;
+
     const fetchDetail = async () => {
       setLoading(true);
       setError('');
       try {
-        const token = await getAccessToken();
-        if (!token) {
-          setLoading(false);
-          return;
-        }
-        const headers = { 'Authorization': `Bearer ${token}` };
-        const res = await fetch(`${apiUrl}/${id}`, { headers });
-        if (!res.ok) throw new Error('取得に失敗しました');
-        const data = await res.json();
+        const data = await apiClient.conversations.getDetails(id);
         setConversation(data);
       } catch (e) {
+        console.error('会話詳細の取得エラー:', e);
         setError('会話詳細の取得に失敗しました');
       } finally {
         setLoading(false);
       }
     };
     fetchDetail();
-  }, [id, getAccessToken, authLoading]);
+  }, [id, authLoading, user]);
 
   if (loading) return <div>読み込み中...</div>;
   if (error) return <div className="error-message">{error}</div>;

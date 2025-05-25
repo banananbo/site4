@@ -1,0 +1,160 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# API呼び出しルール
+
+## 1. 認証状態の確認
+
+```javascript
+const { user, loading: authLoading } = useContext(AuthContext);
+
+// API呼び出し前に必ず認証状態をチェック
+if (authLoading || !user) {
+  return; // または適切なエラーハンドリング
+}
+```
+
+## 2. apiClientの使用
+
+### 基本ルール
+- 直接の`fetch`や`axios`呼び出しは禁止
+- すべてのAPI呼び出しは`apiClient`を通して行う
+- エンドポイントは`endpoints.js`で一元管理
+
+```javascript
+// ❌ 悪い例
+const response = await fetch(`${API_URL}/api/words`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
+
+// ✅ 良い例
+const response = await apiClient.words.getUserWords();
+```
+
+## 3. エラーハンドリング
+
+```javascript
+try {
+  setLoading(true);
+  const response = await apiClient.words.getUserWords();
+  setData(response);
+} catch (err) {
+  console.error('エラー詳細:', err);
+  setError('エラーメッセージ');
+} finally {
+  setLoading(false);
+}
+```
+
+## 4. ローディング状態の管理
+
+```javascript
+const [loading, setLoading] = useState(false);
+
+// 初期値は必ずfalse
+// APIリクエスト前にtrueに設定
+// 完了後（成功・エラー問わず）にfalseに設定
+```
+
+## 5. コンポーネントのマウント時の呼び出し
+
+```javascript
+useEffect(() => {
+  // 認証状態のチェック
+  if (authLoading || !user) return;
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const data = await apiClient.someApi.getData();
+      setData(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, [authLoading, user]); // 依存配列に認証関連の状態を含める
+```
+
+## 6. レスポンス処理
+
+```javascript
+// データ形式の正規化
+if (response && response.content && Array.isArray(response.content)) {
+  setData(response.content);
+} else if (Array.isArray(response)) {
+  setData(response);
+} else {
+  setData([]);
+}
+```
+
+## 7. 状態更新後の再取得
+
+```javascript
+const handleUpdate = async () => {
+  try {
+    await apiClient.words.updateStatus(id, status);
+    // 更新後のデータを再取得
+    await fetchData();
+  } catch (err) {
+    setError(err.message);
+  }
+};
+```
+
+## 8. セキュリティ
+
+- トークンの管理は`apiClient`に一任
+- トークンの更新・削除は`AuthContext`で一元管理
+- 認証エラー（401）は`apiClient`のインターセプターで自動処理
+
+## 9. パフォーマンス考慮
+
+```javascript
+// 不要な再取得を防ぐ
+const handleTabChange = (tab) => {
+  setActiveTab(tab);
+  if (tab === 'everyone' && allData.length === 0) {
+    fetchAllData();
+  }
+};
+```
+
+## 10. デバッグ
+
+```javascript
+// リクエスト・レスポンスのログ出力
+console.log('リクエスト:', requestData);
+const response = await apiClient.someApi.getData();
+console.log('レスポンス:', response);
+```
+
+## メリット
+
+これらのルールを遵守することで、以下のメリットが得られます：
+
+1. **一貫性のある実装**
+   - すべてのコンポーネントで統一された呼び出し方法
+   - 予測可能な動作
+
+2. **エラーハンドリングの統一**
+   - 共通のエラー処理パターン
+   - ユーザーへの一貫したエラー表示
+
+3. **セキュリティの向上**
+   - トークン管理の一元化
+   - 認証状態の適切な監視
+
+4. **コードの保守性向上**
+   - 重複コードの削減
+   - 変更箇所の局所化
+
+5. **デバッグの容易さ**
+   - 統一されたログ出力
+   - エラートレースの簡素化 

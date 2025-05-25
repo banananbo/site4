@@ -1,41 +1,33 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
+import { apiClient } from '../../api/apiClient';
 import { useNavigate } from 'react-router-dom';
-
-const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/conversations`;
 
 const ConversationList = () => {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { getAccessToken, loading: authLoading } = useContext(AuthContext);
+  const { user, loading: authLoading } = useContext(AuthContext);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (authLoading) return; // 初期化中は何もしない
+    if (authLoading || !user) return;
 
     const fetchConversations = async () => {
       setLoading(true);
       setError('');
       try {
-        const token = await getAccessToken();
-        if (!token) {
-          setLoading(false);
-          return;
-        }
-        const headers = { 'Authorization': `Bearer ${token}` };
-        const res = await fetch(apiUrl, { headers });
-        if (!res.ok) throw new Error('取得に失敗しました');
-        const data = await res.json();
+        const data = await apiClient.conversations.getList();
         setConversations(data);
       } catch (e) {
+        console.error('会話一覧の取得エラー:', e);
         setError('会話一覧の取得に失敗しました');
       } finally {
         setLoading(false);
       }
     };
     fetchConversations();
-  }, [getAccessToken, authLoading]);
+  }, [authLoading, user]);
 
   return (
     <div className="conversation-list card">

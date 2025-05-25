@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import axios from 'axios';
 import { AuthContext } from '../contexts/AuthContext';
+import { apiClient } from '../api/apiClient';
 import TextInputForm from '../components/TextInputForm';
 import LearningStatusSelector from '../components/LearningStatusSelector';
 import './WordManagement.css'; // 同じスタイルを使用
@@ -8,8 +8,8 @@ import './WordManagement.css'; // 同じスタイルを使用
 const IdiomsManagement = () => {
   const [idioms, setIdioms] = useState([]);
   const [allIdioms, setAllIdioms] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [allIdiomsLoading, setAllIdiomsLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [allIdiomsLoading, setAllIdiomsLoading] = useState(false);
   const [error, setError] = useState('');
   const [allIdiomsError, setAllIdiomsError] = useState('');
   const [activeTab, setActiveTab] = useState('mypage'); // デフォルトは「マイページ」タブ
@@ -18,33 +18,23 @@ const IdiomsManagement = () => {
   const [showModal, setShowModal] = useState(false); // モーダル表示の状態
   const [detailsLoading, setDetailsLoading] = useState(false); // 詳細情報の読み込み状態
   
-  const { user, getAccessToken } = useContext(AuthContext);
+  const { user, loading: authLoading } = useContext(AuthContext);
   const [updateStatusLoading, setUpdateStatusLoading] = useState(false);
 
   // ユーザーのイディオム一覧を取得
   const fetchUserIdioms = async () => {
+    if (authLoading || !user) return;
+
     try {
       setLoading(true);
-      const token = await getAccessToken();
-      
-      // APIエンドポイントのURL
-      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/idioms/learning`;
-      
-      // 認証トークンをヘッダーに設定
-      const headers = {
-        Authorization: `Bearer ${token}`
-      };
-      
       console.log('ユーザーイディオムリスト取得リクエスト');
-      const response = await axios.get(apiUrl, { headers });
-      console.log('API response:', response.data);
+      const response = await apiClient.idioms.getLearningList();
+      console.log('API response:', response);
       
       // レスポンスデータの形式をチェック
-      if (response.data && response.data.content && Array.isArray(response.data.content)) {
-        // 新しいレスポンス形式の処理
-        const transformedIdioms = response.data.content.map(item => {
+      if (response && response.content && Array.isArray(response.content)) {
+        const transformedIdioms = response.content.map(item => {
           if (item.idiom && item.userIdiom) {
-            // 新しいレスポンス形式: { idiom: {...}, userIdiom: {...} }
             return {
               ...item.idiom,
               id: item.idiom.id,
@@ -55,13 +45,12 @@ const IdiomsManagement = () => {
               isFavorite: item.userIdiom.isFavorite
             };
           } else {
-            // 古いレスポンス形式または未対応の形式
             return item;
           }
         });
         setIdioms(transformedIdioms);
-      } else if (response.data && Array.isArray(response.data)) {
-        setIdioms(response.data);
+      } else if (Array.isArray(response)) {
+        setIdioms(response);
       } else {
         setIdioms([]);
       }
@@ -78,27 +67,18 @@ const IdiomsManagement = () => {
 
   // 全イディオム一覧を取得
   const fetchAllIdioms = async () => {
+    if (authLoading || !user) return;
+
     try {
       setAllIdiomsLoading(true);
-      const token = await getAccessToken();
-      
-      // APIエンドポイントのURL
-      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/idioms`;
-      
-      // 認証トークンをヘッダーに設定
-      const headers = {
-        Authorization: `Bearer ${token}`
-      };
-      
       console.log('全イディオムリスト取得リクエスト');
-      const response = await axios.get(apiUrl, { headers });
-      console.log('API response (all idioms):', response.data);
+      const response = await apiClient.idioms.getList();
+      console.log('API response (all idioms):', response);
       
-      // レスポンスデータの形式をチェック
-      if (response.data && response.data.content && Array.isArray(response.data.content)) {
-        setAllIdioms(response.data.content);
-      } else if (response.data && Array.isArray(response.data)) {
-        setAllIdioms(response.data);
+      if (response && response.content && Array.isArray(response.content)) {
+        setAllIdioms(response.content);
+      } else if (Array.isArray(response)) {
+        setAllIdioms(response);
       } else {
         setAllIdioms([]);
       }
@@ -117,27 +97,14 @@ const IdiomsManagement = () => {
   const fetchIdiomDetails = async (idiomId) => {
     try {
       setDetailsLoading(true);
-      const token = await getAccessToken();
-      
-      // APIエンドポイントのURL
-      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/idioms/${idiomId}`;
-      
-      // 認証トークンをヘッダーに設定
-      const headers = {
-        Authorization: `Bearer ${token}`
-      };
-      
       console.log('イディオム詳細取得リクエスト:', { idiomId });
-      const response = await axios.get(apiUrl, { headers });
-      console.log('API response (idiom details):', response.data);
+      const response = await apiClient.idioms.getDetails(idiomId);
+      console.log('API response (idiom details):', response);
       
-      // レスポンスデータをステートに設定
-      setSelectedIdiomDetails(response.data);
-      
-      return response.data;
+      setSelectedIdiomDetails(response);
+      return response;
     } catch (err) {
       console.error('イディオム詳細取得エラー:', err);
-      // エラーが発生した場合は、基本情報のみの表示用にnullを設定せず、選択されたイディオムをそのまま使用
       setSelectedIdiomDetails(selectedIdiom);
       return selectedIdiom;
     } finally {
@@ -148,16 +115,8 @@ const IdiomsManagement = () => {
   // イディオムをユーザーに関連付ける（学習リストに追加）
   const addIdiomToUser = async (idiomId) => {
     try {
-      const token = await getAccessToken();
-      
-      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/idioms/${idiomId}/learn`;
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-      
-      const response = await axios.post(apiUrl, {}, { headers });
-      console.log('イディオム追加レスポンス:', response.data);
+      console.log('イディオム追加リクエスト:', { idiomId });
+      await apiClient.idioms.learn(idiomId);
       
       // 成功したらイディオム一覧を再取得
       fetchUserIdioms();
@@ -174,25 +133,7 @@ const IdiomsManagement = () => {
     
     setUpdateStatusLoading(true);
     try {
-      const token = await getAccessToken();
-      
-      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/idioms/${idiomId}/status`;
-      
-      const response = await fetch(apiUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '学習状態の更新に失敗しました');
-      }
-      
-      const updatedIdiom = await response.json();
+      const updatedIdiom = await apiClient.idioms.updateStatus(idiomId, status);
       
       // イディオムリストを更新（アクティブなタブに応じて更新する変数を選択）
       if (activeTab === 'mypage') {
@@ -221,29 +162,11 @@ const IdiomsManagement = () => {
   };
 
   // お気に入り状態を更新する関数
-  const updateFavoriteStatus = async (idiomId, isFavorite) => {
+  const updateFavoriteStatus = async (idiomId) => {
     if (!user) return;
     
     try {
-      const token = await getAccessToken();
-      
-      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/idioms/${idiomId}/favorite`;
-      
-      const response = await fetch(apiUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ isFavorite })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'お気に入り状態の更新に失敗しました');
-      }
-      
-      const updatedIdiom = await response.json();
+      const updatedIdiom = await apiClient.idioms.toggleFavorite(idiomId);
       
       // イディオムリストを更新
       if (activeTab === 'mypage') {
@@ -337,7 +260,7 @@ const IdiomsManagement = () => {
                         <input 
                           type="checkbox" 
                           checked={selectedIdiom.isFavorite} 
-                          onChange={(e) => updateFavoriteStatus(selectedIdiom.id, e.target.checked)}
+                          onChange={(e) => updateFavoriteStatus(selectedIdiom.id)}
                         />
                         お気に入り
                       </label>

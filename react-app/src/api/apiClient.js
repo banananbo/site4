@@ -113,12 +113,14 @@ class ApiClient {
     updateStatus: (idiomId, status) => 
       this.post(API_ENDPOINTS.IDIOMS.UPDATE_STATUS(idiomId), { status }),
     toggleFavorite: (idiomId) => this.post(API_ENDPOINTS.IDIOMS.FAVORITE(idiomId)),
+    getList: () => this.get(API_ENDPOINTS.IDIOMS.LIST),
   };
 
   // 会話関連のAPI
   conversations = {
     getList: () => this.get(API_ENDPOINTS.CONVERSATIONS.LIST),
     generate: (data) => this.post(API_ENDPOINTS.CONVERSATIONS.GENERATE, data),
+    getDetails: (conversationId) => this.get(API_ENDPOINTS.CONVERSATIONS.DETAIL(conversationId)),
   };
 
   // その他のAPI

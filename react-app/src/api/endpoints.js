@@ -31,12 +31,14 @@ export const API_ENDPOINTS = {
     LEARN: (idiomId) => `/api/idioms/${idiomId}/learn`,
     UPDATE_STATUS: (idiomId) => `/api/idioms/${idiomId}/status`,
     FAVORITE: (idiomId) => `/api/idioms/${idiomId}/favorite`,
+    LIST: '/api/idioms',
   },
 
   // 会話管理
   CONVERSATIONS: {
     LIST: '/api/conversations',
     GENERATE: '/api/jobs/conversation-generation',
+    DETAIL: (conversationId) => `/api/conversations/${conversationId}`,
   },
 
   // その他

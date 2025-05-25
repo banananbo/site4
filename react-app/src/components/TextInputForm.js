@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
-import axios from 'axios';
 import { AuthContext } from '../contexts/AuthContext';
+import { apiClient } from '../api/apiClient';
 import './TextInputForm.css';
 
 const TextInputForm = ({ onInputProcessed }) => {
@@ -10,7 +10,7 @@ const TextInputForm = ({ onInputProcessed }) => {
   const [success, setSuccess] = useState(false);
   const [processedResult, setProcessedResult] = useState(null);
 
-  const { getAccessToken } = useContext(AuthContext);
+  const { user, loading: authLoading } = useContext(AuthContext);
 
   const handleInputChange = (e) => {
     setTextInput(e.target.value);
@@ -25,45 +25,36 @@ const TextInputForm = ({ onInputProcessed }) => {
       setError('テキストを入力してください');
       return;
     }
+
+    if (authLoading || !user) {
+      setError('認証情報を確認中です');
+      return;
+    }
     
     try {
       setLoading(true);
       setError('');
       
-      // アクセストークンを取得
-      const token = await getAccessToken();
-      
-      // APIリクエストのヘッダーに認証トークンを設定
-      const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      };
-      
-      // リクエストデータを準備
       const requestData = {
         text: textInput,
-        translation: null // 翻訳は常にnull
+        translation: null
       };
       
-      // APIエンドポイントのURL
-      const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/input`;
-      
       console.log('テキスト処理リクエスト:', requestData);
-      const response = await axios.post(apiUrl, requestData, { headers });
-      console.log('API response:', response.data);
+      const response = await apiClient.misc.processTextInput(requestData);
+      console.log('API response:', response);
       
       setSuccess(true);
-      setProcessedResult(response.data);
+      setProcessedResult(response);
       setTextInput('');
       
-      // 親コンポーネントに通知
       if (onInputProcessed && typeof onInputProcessed === 'function') {
-        onInputProcessed(response.data);
+        onInputProcessed(response);
       }
       
     } catch (err) {
       console.error('テキスト処理エラー:', err);
-      setError(err.response?.data?.message || 'エラーが発生しました。もう一度お試しください。');
+      setError(err.message || 'エラーが発生しました。もう一度お試しください。');
     } finally {
       setLoading(false);
     }

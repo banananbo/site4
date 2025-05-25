@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
+import { apiClient } from '../../api/apiClient';
 
 const ConversationCreateForm = () => {
-  const { getAccessToken } = useContext(AuthContext);
+  const { user, loading: authLoading } = useContext(AuthContext);
   const [situation, setSituation] = useState('');
   const [level, setLevel] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,74 +18,54 @@ const ConversationCreateForm = () => {
   const [selectedSpeakerIds, setSelectedSpeakerIds] = useState([]);
   const [selectedGrammarIds, setSelectedGrammarIds] = useState([]);
 
-  const apiUrl = `${process.env.REACT_APP_API_URL || ''}/api/jobs/conversation-generation`;
-  const wordsApiUrl = `${process.env.REACT_APP_API_URL || ''}/api/words/user`;
-  const idiomsApiUrl = `${process.env.REACT_APP_API_URL || ''}/api/idioms/learning`;
-  const speakersApiUrl = `${process.env.REACT_APP_API_URL || ''}/api/speakers`;
-  const grammarsApiUrl = `${process.env.REACT_APP_API_URL || ''}/api/grammars`;
-
   useEffect(() => {
     const fetchItems = async () => {
-      try {
-        const token = await getAccessToken();
-        const headers = {
-          'Authorization': `Bearer ${token}`
-        };
+      if (authLoading || !user) return;
 
-        const [wordsRes, idiomsRes, speakersRes, grammarsRes] = await Promise.all([
-          fetch(wordsApiUrl, { headers }),
-          fetch(idiomsApiUrl, { headers }),
-          fetch(speakersApiUrl, { headers }),
-          fetch(grammarsApiUrl, { headers })
+      try {
+        const [wordsData, idiomsData, speakersData, grammarsData] = await Promise.all([
+          apiClient.words.getUserWords(),
+          apiClient.idioms.getLearningList(),
+          apiClient.misc.getSpeakers(),
+          apiClient.misc.getGrammars()
         ]);
 
-        if (wordsRes.ok) {
-          const wordsData = await wordsRes.json();
-          console.log('Words API Response:', wordsData);
-          setWords(wordsData);
+        console.log('Words API Response:', wordsData);
+        setWords(wordsData || []);
+
+        // イディオムデータの変換処理
+        if (idiomsData && idiomsData.content && Array.isArray(idiomsData.content)) {
+          const transformedIdioms = idiomsData.content.map(item => {
+            if (item.idiom && item.userIdiom) {
+              return {
+                ...item.idiom,
+                id: item.idiom.id,
+                idiom: item.idiom.idiom
+              };
+            }
+            return item;
+          });
+          setIdioms(transformedIdioms);
+        } else if (Array.isArray(idiomsData)) {
+          setIdioms(idiomsData);
+        } else {
+          setIdioms([]);
         }
 
-        if (idiomsRes.ok) {
-          const idiomsData = await idiomsRes.json();
-          console.log('API response:', idiomsData);
-          
-          if (idiomsData && idiomsData.content && Array.isArray(idiomsData.content)) {
-            const transformedIdioms = idiomsData.content.map(item => {
-              if (item.idiom && item.userIdiom) {
-                return {
-                  ...item.idiom,
-                  id: item.idiom.id,
-                  idiom: item.idiom.idiom
-                };
-              } else {
-                return item;
-              }
-            });
-            setIdioms(transformedIdioms);
-          } else if (idiomsData && Array.isArray(idiomsData)) {
-            setIdioms(idiomsData);
-          } else {
-            setIdioms([]);
-          }
+        // スピーカーデータの設定
+        if (speakersData && speakersData.content) {
+          setSpeakers(speakersData.content);
+        } else if (Array.isArray(speakersData)) {
+          setSpeakers(speakersData);
         }
 
-        if (speakersRes.ok) {
-          const speakersData = await speakersRes.json();
-          if (speakersData && speakersData.content) {
-            setSpeakers(speakersData.content);
-          } else if (Array.isArray(speakersData)) {
-            setSpeakers(speakersData);
-          }
+        // 文法データの設定
+        if (grammarsData && grammarsData.content) {
+          setGrammars(grammarsData.content);
+        } else if (Array.isArray(grammarsData)) {
+          setGrammars(grammarsData);
         }
 
-        if (grammarsRes.ok) {
-          const grammarsData = await grammarsRes.json();
-          if (grammarsData && grammarsData.content) {
-            setGrammars(grammarsData.content);
-          } else if (Array.isArray(grammarsData)) {
-            setGrammars(grammarsData);
-          }
-        }
       } catch (e) {
         console.error('データ取得エラー:', e);
         setError('アイテムの取得に失敗しました');
@@ -92,7 +73,7 @@ const ConversationCreateForm = () => {
     };
 
     fetchItems();
-  }, [getAccessToken]);
+  }, [authLoading, user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -117,25 +98,8 @@ const ConversationCreateForm = () => {
 
     setLoading(true);
     try {
-      const token = await getAccessToken();
-      const res = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        console.error('APIエラーレスポンス:', errorData);
-        throw new Error(errorData.message || 'APIエラーが発生しました');
-      }
-
-      const data = await res.json();
-      console.log('APIレスポンス:', data);
-
+      await apiClient.conversations.generate(requestBody);
+      
       setMessage('会話生成ジョブを登録しました');
       setSituation('');
       setLevel('');
